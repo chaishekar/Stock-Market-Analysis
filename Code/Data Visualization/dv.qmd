@@ -1,0 +1,42 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+## Data Visualization for US Stock Indices
+
+Data visualization plays a crucial role in understanding and analyzing complex financial data, such as stock market indices. In the United States, the stock market is represented by various indices, including the widely known S&P 500, Dow Jones Industrial Average (DJIA), and Nasdaq Composite. These indices are used as indicators of the overall health and performance of the U.S. economy and are closely monitored by investors, financial analysts, and the media.
+
+This data visualization focuses on three prominent U.S. stock market indices(DJI, S&P 500 and Nasdaq Composite) and provides insights into the top companies within these indices based on their weightage. The DJI, consisting of 30 large and established companies, is known for its historical significance and representation of blue-chip stocks. S&P 500 is known for its diverse representation of the U.S. stock market, encompassing 500 of the largest publicly traded companies across various industries. As a market-capitalization-weighted index, the S&P 500 reflects changes in the stock prices of these companies, making it a widely recognized benchmark for measuring the performance of the U.S. stock market. On the other hand, the Nasdaq Composite is known for its focus on technology companies, but also includes stocks from other industries.
+
+![](images/dv_stock_index-01.png)
+
+By visualizing the stock prices of the top companies within these indices over time, we can gain valuable insights into their trends, performance, and the impact of external factors such as the COVID-19 pandemic. This analysis can be useful for investors, financial professionals, and anyone interested in understanding the dynamics of the U.S. stock market and the performance of top companies within these indices.
+
+[Click to view the data visualizations](dv_stock_indices.html)
+
+### Data Visualization for Sector Stock Market
+
+The stock market is comprised of various sectors, which are groups of companies operating in the same industry and sharing similar characteristics. The Global Industry Classification Standard (GICS) is a widely used framework that classifies stocks into 11 different sectors, including Consumer Discretionary, Consumer Staples, Energy, Financials, Health Care, Industrials, Information Technology, Materials, Real Estate, Telecommunication Services, and Utilities.
+
+![](images/dv_sector_market.png)
+
+Data visualization of the sector market stocks provides a valuable tool for investors, financial analysts, and decision-makers to gain insights into the performance of different sectors within the stock market. By visually representing stock prices, trends, and performance of sectors over time, data visualization can help identify investment opportunities, assess risks, and make informed decisions.
+
+[Click to view the data visualizations](dv_sector_market.html)
+
+### Data Visualization for Macroeconomic Factors
+
+Macroeconomic factors play a crucial role in shaping the overall health and performance of an economy. These factors, including gross domestic product (GDP) growth rate, interest rate, inflation rate, and others, have a significant impact on businesses, consumers, and policymakers. Monitoring and understanding these macroeconomic factors is essential for making informed decisions, formulating economic policies, and assessing the overall health of an economy.
+
+![](images/dv_macroeconomic.png){width="452" height="384"}
+
+Visualizing macroeconomic factors can provide valuable insights and help stakeholders better understand the trends, patterns, and relationships between these factors. Through visualizations, complex data can be presented in a clear and concise manner, allowing for easier interpretation and analysis. Visualizations can highlight historical trends, identify potential correlations, and provide a visual context for understanding the impact of policy changes or external events on macroeconomic factors.
+
+In this analysis, we will use visualizations to explore and analyze key macroeconomic factors, including GDP growth rate, interest rate, and inflation rate in the United States from 2010 to present. Through these visualizations, we aim to provide a comprehensive overview of the trends and dynamics of these macroeconomic factors over time, highlighting important events or shifts that may have influenced their trajectories. By visualizing these macroeconomic factors, we can gain a deeper understanding of their impact on the U.S. economy and make informed assessments about their future implications.
+
+[Click to view the data visualizations](dv_macroeconomic_factor.html)

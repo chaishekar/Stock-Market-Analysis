@@ -1,0 +1,237 @@
+---
+title: "EDA for Inflation Rate"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+Inflation is a crucial macroeconomic indicator that measures the rate at which the prices of goods and services in an economy are rising over time. Exploratory Data Analysis (EDA) is a powerful technique for analyzing inflation rate data and gaining insights into the factors driving inflation. In this page, we will explore various EDA techniques that can be applied to inflation rate data, such as time series analysis, autocorrelation analysis, seasonality analysis, moving averages, and detrending. By the end of this page, you will have a better understanding of how to apply EDA techniques to inflation rate data and draw valuable insights from it.
+
+#### Time Series Plot
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+inflation_rate <- read.csv("DATA/RAW DATA/inflation-rate.csv")
+
+#cleaning the data
+#remove unwanted columns
+inflation_rate_clean <- subset(inflation_rate, select = -c(1,HALF1,HALF2))
+
+#convert the data to time series data
+inflation_data_ts <- ts(as.vector(t(as.matrix(inflation_rate_clean))), start=c(2010,1), end=c(2023,2), frequency=12)
+
+#export the data
+write.csv(inflation_rate_clean, "DATA/CLEANED DATA/inflation_rate_clean_data.csv", row.names=FALSE)
+
+
+#plot inflation rate 
+fig <- autoplot(inflation_data_ts, ylab = "Inflation Rate", color="#DB7093")+ggtitle("U.S Inflation Rate: January 2010 - February 2023")+theme_bw()
+ggplotly(fig)
+
+```
+
+The inflation rate in the United States has varied from year to year since 2010. From 2010 to 2018, the inflation rate generally remained below 2% per year, with some slight fluctuations. In 2016, it started to rise gradually and continued to increase until it reached a peak of 6.6% in June 2022. Since then, it has slightly decreased and as of February 2023. The COVID-19 pandemic has played a significant role in driving up inflation in the United States, as supply chain disruptions and increased demand have led to higher prices for goods and services. The Federal Reserve has taken steps to address inflation, including raising interest rates and reducing asset purchases, in order to keep it under control.
+
+Based on the plot of the inflation rate in the USA from 2010 to Feb 2023, it appears that there is a clear upward trend, and some level of seasonality as well. Therefore, it would be appropriate to use a multiplicative decomposition method for this time series data. A multiplicative model will allow us to separate the overall trend from the seasonal variations in a way that is appropriate for this type of data.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#decomposition
+orginial_plot <- autoplot(inflation_data_ts,xlab ="Year", ylab = "Interest Rate", main = "U.S Inflation Rate: January 2010 - Feb 2023")
+decompose = decompose(inflation_data_ts,"multiplicative")
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+trendadj <- inflation_data_ts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='seasonal') +ggtitle('Adjusted trend component in the additive time series model')
+seasonaladj <- inflation_data_ts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the additive time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+```
+:::
+
+When compared to the original figure, the corrected seasonal component shows tend to show upward trend in the model, but the adjusted trend component has a stable trend through time with some fluctuation.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(inflation_data_ts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for U.S Inflation Rate: January 2010 - Feb 2023")
+```
+
+##### Monthly Time Lags
+
+```{r arning=FALSE}
+#Lag plot for monthly data
+ts_lags(inflation_data_ts)
+
+```
+:::
+
+There should be a strong relationship between the series and the pertinent lag from January 2010 to Feb 2023 because there is a positive correlation and an inclination angle of 45 degrees in the lag plot. This is the characteristic lag plot of a process with positive autocorrelation. One observation and the next have a significant link, making such processes remarkably random. Investigating seasonality also involves graphing observations over a larger range of time intervals, or the lags. To make the time series data easier to understand and create graphs with more clarity, the time series data is combined with monthly data using the mean function. The second graph displays the variable's monthly variation along the vertical axis. The lines link the points in the order of time. There is a correlation and it is significantly positive, supporting the seasonality of the data.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(inflation_data_ts,color = "Reds", title = 'Seasonality U.S Inflation Rate: 2010 - 2021')
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(inflation_data_ts, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot forU.S Inflation Rate: 2010 - 2021")
+```
+:::
+
+The Seasonality Heatmap for the Inflation Rate data from JAN 2010 - March 2023 does indicate some significant seasonality for few years in the data, but there seem no to be seasonality in the line graph. To confirm the seasonality we can check on the acf plot for the series.
+
+#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(inflation_data_ts, series="inflation_rate_clean") +
+  autolayer(ma(inflation_data_ts,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Inflation Rate January 2010 - Feb 2023 (4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(inflation_data_ts, series="inflation_rate_clean") +
+  autolayer(ma(inflation_data_ts,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Inflation Rate January 2010 - Feb 20233 (1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(inflation_data_ts, series="inflation_rate_clean") +
+  autolayer(ma(inflation_data_ts,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Inflation Rate January 2010 - Feb 2023 (3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+
+##### 5 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(inflation_data_ts, series="inflation_rate_clean") +
+  autolayer(ma(inflation_data_ts,61), series="5 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Inflation Rate January 2010 - Feb 2023 (5 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","5 Year MA"="red"),
+                      breaks=c("Data","5 Year MA"))
+ma
+```
+:::
+
+The Inflation Rate is displayed for the time period between January 2010 and Feb 2023 in the four plots above, which have been smoothed using 4-month, 1-year, 3-year, and 5-year moving averages. We can observe from the graphs that the moving average values have been rising over time. Given that it captures the short-term differences in stock prices, the 4-month MA plot exhibits a great deal of volatility, which is to be expected. The 1-year, 3-year, and 5-year MA plots, on the other hand, tame the oscillations and reveal the general direction of stock prices. We can see that the 5-year MA plot, which considers a longer time period than the other plots, shows a trend that is smoother. The 3-year MA plot similarly shows a fairly smooth trend, but unlike the 5-year MA plot, it also shows shorter-term variability. Even more susceptible to short-term changes in stock prices is the 1-year MA plot. As the moving average increases we can notive that the trend for Inflation Rate isn't stable is towards upward.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+#ACF plots for monthly data
+ggAcf(inflation_data_ts)+ggtitle("ACF Plot for Inflation Rate: January 2010 - Feb 2023")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF plots for monthly data
+ggPacf(inflation_data_ts)+ggtitle("PACF Plot for Inflation Rate: January 2010 - Feb 2023")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+# ADF Test
+tseries::adf.test(inflation_data_ts)
+```
+:::
+
+The autocorrelation function plot, which is the acf graph for monthly data, clearly shows autocorrelation in lag and seasonality. The series appears to be seasonal, according to the lag plots and autocorrelation plots displayed above, proving that it is not stable. The Augmented Dickey-Fuller Test, which reveals that the series is not stationary if the p value is more than 0.05, was also used to validate it. The p value obtained from ADF test is greater than 0.05, which indicates taht the series is not stationary.
+
+#### Detrend and Differenced Time Series
+
+::: panel-tabset
+##### Linear Fitting Model
+
+```{r warning=FALSE}
+fit = lm(inflation_data_ts~time(inflation_data_ts), na.action=NULL) 
+summary(fit) 
+```
+
+##### ACF Plot
+
+```{r warning=FALSE}
+# plot ACFs
+plot1 <- ggAcf(inflation_data_ts, 48, main="Original Data: Inflation Rate")
+plot2 <- ggAcf(resid(fit), 48, main="Detrended data") 
+plot3 <- ggAcf(diff(inflation_data_ts), 48, main="First differenced data")
+grid.arrange(plot1, plot2, plot3,nrow=3)
+```
+:::
+
+The estimated slope coefficient β1, 0.23655 With a standard error of 0.02148, yielding a significant estimated increase of stock price is very less yearly. Equation of the fit for stationary process: $$\hat{y}_{t} = x_{t}+(474.68145)-(0.23655)t$$
+
+From the above graph we can say that there is correlation in the original plot, but in the detrended plot the correlation is reduced but there is still high correlation in the detrended data.But when the first order difference is applied the high correlation is removed but there is seasonal correlation.
+
+As depicted in the above figure, the series is now stationary and ready for future study.

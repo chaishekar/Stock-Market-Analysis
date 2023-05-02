@@ -1,0 +1,27 @@
+---
+title: "EDA for Macroeconomic Factors"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+Exploratory Data Analysis (EDA) is a crucial step in understanding the behavior of macroeconomic factors such as GDP growth rate, inflation, interest rates, and unemployment rates. These factors play a critical role in shaping the overall performance of an economy. EDA involves various statistical techniques and tools that help in analyzing and visualizing data to identify patterns, trends, and anomalies.
+
+One of the key aspects of EDA is time series analysis, which is used to analyze data collected over time. Time series data such as GDP growth rate, inflation, interest rates, and unemployment rates are characterized by autocorrelation, which means that the value of a variable at a particular time is dependent on its past values. Autocorrelation can be quantified using statistical measures such as the autocorrelation function (ACF) and partial autocorrelation function (PACF). These measures are used to identify the strength and direction of the relationship between variables.
+
+Another important concept in time series analysis is stationarity, which refers to the stability of the statistical properties of a time series over time. Stationarity is a critical assumption in many time series models, and it can be tested using techniques such as the Augmented Dickey-Fuller (ADF) test. Seasonality is another aspect of time series data that can be identified using EDA. Seasonality refers to the presence of regular and predictable patterns in the data that recur over a fixed time period.
+
+Moving averages are another statistical technique commonly used in EDA for time series data. Moving averages smooth out fluctuations in the data and help identify trends and patterns. Autocorrelation is also a key concept in EDA for time series data. Autocorrelation refers to the degree of correlation between a variable and its past values.
+
+Finally, detrend check is a technique used to identify trends in time series data. Detrending involves removing the trend component from the data to isolate the cyclical and irregular components. EDA for macroeconomic factors such as GDP growth rate, inflation, interest rates, and unemployment rates involves a careful consideration of all these concepts and techniques to identify patterns and trends that can provide valuable insights into the behavior of these critical economic indicators.
+
+[Click to view EDA Page for GDP Growth Rate](eda_macroeconomic_gdp.html)
+
+[Click to view EDA Page for Interest Rate](eda_macroeconomic_interest.html)
+
+[Click to view EDA Page for Inflation Rate](eda_macroeconomic_inflation.html)
+
+[Click to view EDA Page for Unemployment Rate](eda_macroeconomic_unemployment.html)

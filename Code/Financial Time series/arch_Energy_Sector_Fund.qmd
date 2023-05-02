@@ -1,0 +1,652 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+
+---
+
+#### Impact of Macroeconomic Factors on ExxonMobil Stock Price
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+library(reshape2)
+require(gridExtra)
+library(magrittr)
+library(vars)
+library(FinTS)
+library(fGarch)
+options(dplyr.summarise.inform = FALSE)
+```
+
+
+One of the top companies in the energy sector is ExxonMobil Corporation (XOM), which is one of the largest publicly traded international oil and gas companies in the world. ExxonMobil engages in exploration, production, transportation, and sale of crude oil, natural gas, and petroleum products. With operations in over 70 countries, ExxonMobil has a significant global presence and is a major player in the energy industry. As of 2021, ExxonMobil also has investments in alternative energy technologies such as biofuels and carbon capture and storage.
+
+By using an ARIMAX+ARCH/GARCH model to analyze the stock price behavior of ExxonMobil, we can gain insights into how macroeconomic factors impact the company's performance. For example, an increase in GDP growth rate or a decrease in unemployment rate may lead to increased consumer spending and a rise in ExxonMobil's stock price. Conversely, an increase in inflation or interest rates may lead to a decrease in consumer spending and a decline in ExxonMobil's stock price.
+
+#### Time series Plot
+
+::: panel-tabset
+### ExxonMobil
+
+```{r warning=FALSE}
+# get data
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+
+data.info = getSymbols("XOM",src='yahoo', from = '2010-01-01',to = "2023-03-01",auto.assign = FALSE)
+data = getSymbols("XOM",src='yahoo', from = '2010-01-01',to = "2023-03-01")
+df <- data.frame(Date=index(XOM),coredata(XOM))
+
+# create Bollinger Bands
+bbands <- BBands(XOM[,c("XOM.High","XOM.Low","XOM.Close")])
+
+# join and subset data
+df <- subset(cbind(df, data.frame(bbands[,1:3])), Date >= "2010-01-01")
+
+
+# colors column for increasing and decreasing
+for (i in 1:length(df[,1])) {
+  if (df$XOM.Close[i] >= df$XOM.Open[i]) {
+      df$direction[i] = 'Increasing'
+  } else {
+      df$direction[i] = 'Decreasing'
+  }
+}
+
+i <- list(line = list(color = '#F9E79F'))
+d <- list(line = list(color = '#7F7F7F'))
+
+# plot candlestick chart
+
+fig <- df %>% plot_ly(x = ~Date, type="candlestick",
+          open = ~XOM.Open, close = ~XOM.Close,
+          high = ~XOM.High, low = ~XOM.Low, name = "XOM",
+          increasing = i, decreasing = d) 
+fig <- fig %>% add_lines(x = ~Date, y = ~up , name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands",
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% add_lines(x = ~Date, y = ~dn, name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands", inherit = F,
+            showlegend = FALSE, hoverinfo = "none") 
+fig <- fig %>% add_lines(x = ~Date, y = ~mavg, name = "Mv Avg",
+            line = list(color = '#C052B3', width = 0.5),
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% layout(yaxis = list(title = "Price"))
+
+# plot volume bar chart
+fig2 <- df 
+fig2 <- fig2 %>% plot_ly(x=~Date, y=~XOM.Volume, type='bar', name = "XOM Volume",
+          color = ~direction, colors = c('#F9E79F','#7F7F7F')) 
+fig2 <- fig2 %>% layout(yaxis = list(title = "Volume"))
+
+# create rangeselector buttons
+rs <- list(visible = TRUE, x = 0.5, y = -0.055,
+           xanchor = 'center', yref = 'paper',
+           font = list(size = 9),
+           buttons = list(
+             list(count=1,
+                  label='RESET',
+                  step='all'),
+             list(count=3,
+                  label='3 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 MO',
+                  step='month',
+                  stepmode='backward')
+           ))
+
+# subplot with shared x axis
+fig <- subplot(fig, fig2, heights = c(0.7,0.2), nrows=2,
+             shareX = TRUE, titleY = TRUE)
+fig <- fig %>% layout(title = paste("ExxonMobil Stock Price: January 2010 - March 2023"),
+         xaxis = list(rangeselector = rs),
+         legend = list(orientation = 'h', x = 0.5, y = 1,
+                       xanchor = 'center', yref = 'paper',
+                       font = list(size = 10),
+                       bgcolor = 'transparent'))
+
+fig
+```
+
+### Differentitaed Chart Series
+
+```{r}
+log(data.info$`XOM.Adjusted`) %>% diff() %>% chartSeries(theme=chartTheme('white'),up.col='#F9E79F')
+```
+
+### GDP Growth
+
+```{r}
+#import the data
+gdp <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+
+#change date format
+gdp$Date <- as.Date(gdp$DATE , "%m/%d/%Y")
+
+#drop DATE column
+gdp <- subset(gdp, select = -c(1))
+
+#export the cleaned data
+gdp_clean <- gdp
+write.csv(gdp_clean, "DATA/CLEANED DATA/gdp_clean_data.csv", row.names=FALSE)
+
+#plot gdp growth rate 
+fig <- plot_ly(gdp, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(240, 128, 128)'))
+fig <- fig %>% layout(title = "U.S GPD Growth Rate: 2010 - 2022",xaxis = list(title = "Time"),yaxis = list(title ="GDP Growth Rate"))
+fig
+```
+
+### Inflation
+
+```{r}
+#import the data
+inflation_rate <- read.csv("DATA/RAW DATA/inflation-rate.csv")
+
+#cleaning the data
+#remove unwanted columns
+inflation_rate_clean <- subset(inflation_rate, select = -c(1,HALF1,HALF2))
+
+#convert the data to time series data
+inflation_data_ts <- ts(as.vector(t(as.matrix(inflation_rate_clean))), start=c(2010,1), end=c(2023,2), frequency=12)
+
+#export the data
+write.csv(inflation_rate_clean, "DATA/CLEANED DATA/inflation_rate_clean_data.csv", row.names=FALSE)
+
+
+#plot inflation rate 
+fig <- autoplot(inflation_data_ts, ylab = "Inflation Rate", color="#FFA07A")+ggtitle("U.S Inflation Rate: January 2010 - February 2023")+theme_bw()
+ggplotly(fig)
+```
+
+### Interest
+
+```{r}
+#import the data
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+
+#change date format
+interest_data$Date <- as.Date(interest_data$Date , "%m/%d/%Y")
+
+#export the cleaned data
+interest_clean_data <- interest_data
+write.csv(interest_clean_data, "DATA/CLEANED DATA/interest_rate_clean_data.csv", row.names=FALSE)
+
+#plot interest rate 
+fig <- plot_ly(interest_data, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color='rgb(219, 112, 147)'))
+fig <- fig %>% layout(title = "U.S Interest Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Interest Rate"))
+fig
+```
+
+### Unemployment
+
+```{r}
+#import the data
+unemployment_rate <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#change date format
+unemployment_rate$Date <- as.Date(unemployment_rate$Date , "%m/%d/%Y")
+
+# export the data
+write.csv(unemployment_rate, "DATA/CLEANED DATA/unemployment_rate_clean_data.csv", row.names=FALSE)
+
+#plot unemployment rate 
+fig <- plot_ly(unemployment_rate, x = ~Date, y = ~Value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(189, 183, 107)'))
+fig <- fig %>% layout(title = "U.S Unemployment Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Unemployment Rate"))
+fig
+```
+:::
+
+ExxonMobil (XOM) is one of the largest integrated oil and gas companies in the world. From 2010 to 2023, XOM's stock price experienced some significant fluctuations.
+
+In the early part of the decade, XOM's stock price steadily increased as the global demand for oil and gas remained strong. However, the company's stock price began to decline in mid-2014, as the oversupply of oil and gas in the global market led to a drop in prices. This decline was further exacerbated by the COVID-19 pandemic in 2020, which caused a sharp drop in global demand for oil and gas.
+
+Despite these challenges, XOM's stock price has shown signs of recovery in recent years, as the company has taken steps to reduce its costs and increase its focus on natural gas and chemicals. In addition, the company has made significant investments in renewable energy, which could help it to diversify its revenue streams in the long term.
+
+Since mid 2020, ExxonMobil's stock price has experienced some volatility, likely due to a combination of factors such as global economic uncertainty and fluctuations in consumer demand for the company's products.
+
+As discussed before, the macroeconomic factors of GDP growth, inflation, interest rates, and unemployment rate are closely interrelated and play a crucial role in the overall health and stability of an economy. From 2010 to 2023, the global economy experienced a mix of ups and downs, with periods of strong GDP growth followed by slowdowns and recessions.
+
+The second plot shows the first difference of the logarithm of the adjusted ExxonMobil stock price. Taking the first difference removes any long-term trends and transforms the time series into a stationary process. From the plot, we can observe that the first difference of the logarithm of the ExxonMobil stock price appears to be stationary, as the mean and variance are roughly constant over time.
+
+#### Enodogenous and Exogenous Variables
+
+::: panel-tabset
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+gdp_data <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+inflation_data <- read.csv("DATA/CLEANED DATA/inflation_yearly_data.csv")
+unemployment_data <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+data_clean <-df %>% dplyr::select(Date,XOM.Adjusted)
+data_clean <- data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+data_clean = data_clean[,!(names(data_clean) %in% drop)]
+#interest_data 
+interest_data$Date<-as.Date(interest_data$Date,"%m/%d/%Y")
+interest_data <- interest_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(interest_data)[2] ="interest"
+drop <- c("Q")
+interest_data = interest_data[,!(names(interest_data) %in% drop)]
+#inflation_data
+inflation_data$Date<-as.Date(inflation_data$Date,"%m/%d/%Y")
+inflation_data <- inflation_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(inflation_data)[2] ="inflation"
+drop <- c("Q")
+inflation_data = inflation_data[,!(names(inflation_data) %in% drop)]
+#unemployment_data 
+unemployment_data$Date<-as.Date(unemployment_data$Date,"%m/%d/%Y")
+unemployment_data <- unemployment_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(unemployment_data)[2] ="unemployment"
+drop <- c("Q")
+unemployment_data = unemployment_data[,!(names(unemployment_data) %in% drop)]
+#gdp_data
+gdp_data$Date <- as.Date(gdp_data$DATE , "%m/%d/%Y")
+#drop DATE column from gdp_data
+gdp_data <- gdp_data %>%dplyr::select( Date, value)
+colnames(gdp_data)[2] ="gdp"
+
+drop <- c("Q")
+df = unemployment_data[,!(names(unemployment_data) %in% drop)]
+
+df_final <- list(data_clean,gdp_data, interest_data, inflation_data, unemployment_data)      
+final <- Reduce(function(x, y) merge(x, y, all=TRUE), df_final) 
+final <- na.omit(final)
+
+
+```
+
+### Plot
+
+```{r}
+numeric_data <- c("XOM.Adjusted","gdp", "interest", "inflation", "unemployment")
+numeric_data <- final[, numeric_data]
+normalized_data_numeric <- scale(numeric_data)
+normalized_data <- ts(normalized_data_numeric, start = c(2010, 1), end = c(2021,10),frequency = 4)
+ts_plot(normalized_data,
+        title = "Normalized Time Series Data for XOM Stock and Macroeconomic Variables",
+        Ytitle = "Normalized Values",
+        Xtitle = "Year")
+```
+
+### Correlation Heatmap
+
+```{r}
+
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+}
+cormat <- round(cor(normalized_data_numeric),2)
+
+upper_tri <- get_upper_tri(cormat)
+
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+
+```
+
+### CCF GDP
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("XOM.Adjusted")], normalized_data[, c("gdp")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for XOM Stock Price and GDP Growth Rate ",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Interest
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("XOM.Adjusted")], normalized_data[, c("interest")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for XOM Stock Price and Interest Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Inflation
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("XOM.Adjusted")], normalized_data[, c("inflation")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for XOM Stock Price and Inflation Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Unemployment
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("XOM.Adjusted")], normalized_data[, c("unemployment")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for XOM Stock Priceand Unemployment Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+:::
+
+The Normalized Time Series Data for Stock Price and Macroeconomic Variables plot shows the same variables as the first plot but has been normalized to a common range of 0 to 1 using the scale() function in R, which standardizes the variables to have a mean of 0 and a standard deviation of 1. The heatmap analysis of the normalized data reveals that inflation and unemployment rate exhibit strong positive correlations with the stock price indices, indicating that these variables may significantly influence stock price movements. On the other hand, weaker correlations were observed between the stock price indices and GDP and interest rates, suggesting that these variables may have less impact on stock price fluctuations. The cross-correlation feature plots confirm these findings, indicating that inflation and unemployment rate are more suitable feature variables for the ARIMAX model when predicting ExxonMobil movements.
+
+Final Exogenous variables: Macroeconomic indicators: Inflation rate and unemployment rate.
+
+#### Enodogenous and Exogenous Variables Plot
+
+::: panel-tabset
+### Plot
+
+```{r}
+final_data <- final %>%dplyr::select( Date,XOM.Adjusted, inflation,unemployment)
+numeric_data <- c("XOM.Adjusted", "inflation","unemployment")
+numeric_data <- final_data[, numeric_data]
+normalized_data_numeric <- scale(numeric_data)
+normalized_numeric_df <- data.frame(normalized_data_numeric)
+normalized_data_ts <- ts(normalized_data_numeric, start = c(2010, 1), frequency = 4)
+
+autoplot(normalized_data_ts, facets=TRUE) +
+  xlab("Year") + ylab("") +
+  ggtitle("ExxonMobil Stock Price, Inflation Rate and Unemployment Rate in USA 2010-2023")
+```
+
+### Check the stationarity
+
+```{r}
+# Convert your multivariate time series data to a matrix
+final_data_ts_multivariate <- as.matrix(normalized_data_ts)
+
+# Check for stationarity using Phillips-Perron test
+phillips_perron_test <- ur.pp(final_data_ts_multivariate)  
+summary(phillips_perron_test)
+```
+:::
+
+The results of the Phillips-Perron unit root test indicate strong evidence against the null hypothesis of a unit root, as the p-value for the coefficient of the lagged variable is less than the significance level of 0.05. This suggests that the variable y, which is being tested for stationarity, is likely stationary. Furthermore, the test statistic Z-tau-mu is 0.0608, which is smaller than the critical value of Z-alpha (-35.294), providing further evidence of stationarity.
+
+To determine whether the linear model requires an ARCH model, an ARCH test is conducted. The ACF and PACF plots are also used to identify suitable model values.
+
+#### Model Fitting
+
+::: panel-tabset
+### Plot
+
+```{r}
+normalized_numeric_df$XOM.Adjusted<-ts(normalized_numeric_df$XOM.Adjusted,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+normalized_numeric_df$inflation<-ts(normalized_numeric_df$inflation,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+normalized_numeric_df$unemployment<-ts(normalized_numeric_df$unemployment,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+
+fit <- lm(XOM.Adjusted ~ inflation+unemployment, data=normalized_numeric_df)
+fit.res<-ts(residuals(fit),star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+############## Then look at the residuals ############
+returns <- fit.res  %>% diff()
+autoplot(returns)+ggtitle("Linear Model Returns")
+```
+
+### ARCH Test
+
+```{r}
+byd.archTest <- ArchTest(fit.res, lags = 1, demean = TRUE)
+byd.archTest
+```
+
+### ACF Plot
+
+```{r}
+ggAcf(returns) +ggtitle("ACF for returns")
+```
+
+### PACF Plot
+
+```{r}
+ggPacf(returns) +ggtitle("PACF for returns")
+```
+:::
+
+The ARCH LM-test was conducted with the null hypothesis of no ARCH effects. The test resulted in a chi-squared value of 36.896 with one degree of freedom, and a very low p-value of 0.01165. This suggests strong evidence against the null hypothesis, indicating the presence of ARCH effects in the data.
+
+Based on the ACF and PACF plots, it appears that there is some significant autocorrelation and partial autocorrelation at multiple lags, which suggests that an ARIMA model may not be sufficient to capture the time series behavior. Additionally, the values for p and q appear to be relatively high, with p = 0 and q = 0 being suggested by the plots.
+
+#### ARIMAX Model
+
+::: panel-tabset
+### Auto Arima Model
+
+```{r}
+xreg <- cbind(Inflation = normalized_data_ts[, "inflation"],
+              Unemployment = normalized_data_ts[, "unemployment"])
+fit.auto <- auto.arima(normalized_data_ts[, "XOM.Adjusted"], xreg = xreg)
+summary(fit.auto)
+```
+
+### Auto Arima Residuals
+
+```{r}
+checkresiduals(fit.auto)
+```
+
+:::
+
+Based on the results of the auto.arima function, the suggested best model is ARIMA(0,1,0) which is the same as the manual choosen arima model. So, we can then proceed to choose the best GARCH model using ARIMA(0,1,0) as the base model.
+
+We can then proceed to choose the best GARCH model using ARIMA(0,1,0) as the base model.
+
+#### Squared Residuals
+
+::: panel-tabset
+
+### Plot
+
+```{r}
+fit <- lm(XOM.Adjusted ~ inflation+unemployment, data=normalized_numeric_df)
+fit.res<-ts(residuals(fit),star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+fit <- Arima(fit.res,order=c(0,1,0))
+res=fit$res
+plot(res^2,main='Squared Residuals')
+```
+
+### ACF Plot
+
+```{r}
+acf(res^2,24, main = "ACF Residuals Square")
+
+```
+
+### PACF Plot
+
+```{r}
+pacf(res^2,24, main = "PACF Residuals Square")
+```
+
+
+### GRACH(1,1)
+
+```{r}
+summary(garchFit(~garch(1,1),res, trace=F))
+```
+:::
+
+From the squared residuals of the best ARIMA model, it can be observed that the ACF plot and PACF plot indicate that the residuals are not autocorrelated and are white noise, indicating a good fit of the model. Based on the squared residuals of the best ARIMA model, we can see that the ACF and PACF plots indicate that most of the values lie between the blue lines. Additionally, the p-value is 1 and q-value is 1. This suggests that the model has a good fit and that there is no significant autocorrelation or partial autocorrelation in the residuals. 
+
+ The bst model is ARIMA(0,1,0) and GARCH(1,1).
+#### Best Model
+
+::: panel-tabset
+### ARIMA Model
+
+```{r}
+#fiting an ARIMA model to the Inflation variable
+inflation_fit<-auto.arima(normalized_numeric_df$inflation) 
+finflation<-forecast(inflation_fit)
+
+#fitting an ARIMA model to the Unemployment variable
+unemployment_fit<-auto.arima(normalized_numeric_df$unemployment) 
+funemployment<-forecast(unemployment_fit)
+
+# best model fit for forcasting
+xreg <- cbind(Inflation = normalized_data_ts[, "inflation"],
+              Unemployment = normalized_data_ts[, "unemployment"])
+
+
+
+summary(arima.fit<-Arima(normalized_data_ts[, "XOM.Adjusted"],order=c(0,1,0),xreg=xreg),include.drift = TRUE)
+```
+
+### GARCH Model
+
+```{r}
+summary(final.fit <- garchFit(~garch(1,1), res,trace = F))
+```
+
+### Volatility 
+
+```{r}
+ht <- final.fit@h.t #a numeric vector with the conditional variances (h.t = sigma.t^delta)
+
+#############################
+data=data.frame(final)
+data$Date<-as.Date(data$Date,"%Y-%m-%d")
+
+
+data2= data.frame(ht,data$Date)
+ggplot(data2, aes(y = ht, x = data.Date)) + geom_line(col = '#F9E79F') + ylab('Conditional Variance') + xlab('Date')
+```
+:::
+
+From the ARIMA(0,1,0), we see that the training set error measures also suggest a good fit, with low mean absolute error, root mean squared error, and autocorrelation of the residuals. GATCH(1,1) model model is used to estimate the volatility of the standardized residuals of the previous regression model. The model includes a mean equation that estimates the mean of the residuals and a variance equation that models the conditional variance of the residuals. The coefficients of the mean equation suggest that the mean of the residuals is close to zero. The variance equation coefficients suggest that the conditional variance of the residuals is dependent on the past conditional variances and the past squared standardized residuals. The model's the AIC, BIC, SIC, and HQIC values are all relatively low, indicating a good fit of the model. The standardized residuals tests indicate that the residuals are approximately normally distributed and that there is no significant autocorrelation in the residuals.
+
+The volatility of the model seems high in 2020 but has decreased gradually in the past few months. This could indicate that the asset's price was experiencing a lot of fluctuations in 2020, but the market has stabilized recently.
+
+#### Model Diagnostics 
+
+::: panel-tabset
+
+### Residuals
+
+```{r}
+fit2<-garch(res,order=c(1,1),trace=F)
+checkresiduals(fit2) 
+```
+
+### QQ Plot
+
+```{r}
+qqnorm(fit2$residuals, pch = 1)
+qqline(fit2$residuals, col = "blue", lwd = 2)
+```
+
+### Box Test
+
+```{r}
+Box.test (fit2$residuals, type = "Ljung")
+```
+The ACF plot of the residuals shows all the values between the blue lines, which indicates that the residuals are not significantly autocorrelated. The range of values for the residual plot between -2 and 2 is considered acceptable. Additionally, the QQ plot of the residuals shows a linear plot on the line, which is another good indication that the residuals are normally distributed. The QQ plot is a valuable tool to assess if the residuals follow a normal distribution, and in this case, the plot suggests that the residuals do indeed follow a normal distribution.
+
+The Box-Ljung test, a p-value of 0.3475 indicates that the model's residuals are not significantly autocorrelated, meaning that the model has captured most of the information in the data. This result is good because it suggests that the model is a good fit for the data and has accounted for most of the underlying patterns in the data. Therefore, we can rely on the model's predictions and use them to make informed decisions.
+:::
+
+#### Forecast
+
+```{r}
+predict(final.fit, n.ahead = 5, plot=TRUE)
+```
+The forecasted plot is based on the best model ARIMAX(0,1,0)+GARCH(1,1). This model takes into account the autoregressive and moving average components of the data, as well as the impact off exogenous variables on the time series. Additionally, the GARCH component of the model accounts for the volatility clustering in the data. Overall, this model is well-suited to make accurate predictions about future values of the time series.
+
+#### Equation of the Model
+
+The equation of the ARIMAX(0,1,0) model is:
+
+$Y(t) = Y(t-1) + \epsilon(t)$
+
+where $Y(t)$ is the time series variable and $\epsilon(t)$ is the error term.
+
+The equation of the GARCH(1,1) model is:
+
+$\sigma^2(t) = \alpha_0+\alpha_1\epsilon_t^2(t-1)+ \beta_1\sigma^2(t-1)$
+
+where $\sigma^2_t$ is the conditional variance at time $t$, $\alpha_0$ is a constant, $\alpha_1$ and $\beta_1$ are the parameters, and $\epsilon_t$ is the error term.
+
+The combined equation of the ARIMAX(0,1,0)+GARCH(1,1) model is:
+
+
+$Y(t) = Y(t-1) + \epsilon(t)$
+
+$\epsilon(t) = \sigma(t) * \epsilon~(t)$
+
+$\sigma^2(t) = \alpha_0+\alpha_1\epsilon_t^2(t-1)+ \beta_1\sigma^2(t-1)$
+
+
+
+

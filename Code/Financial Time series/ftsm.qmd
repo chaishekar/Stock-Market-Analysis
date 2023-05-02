@@ -1,0 +1,44 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+
+toc: false
+---
+
+### Financial Time Series Models
+
+Financial time series models are statistical models that are used to analyze financial data, including stock prices, economic indicators, and other financial metrics. These models can help investors and analysts to understand trends and patterns in financial data, and to make predictions about future performance.
+
+We will be looking at each of the top company for each sector with macroeconomic indicators such as GDP growth rate, inflation, interest rates, and unemployment. For example, let's consider the technology sector and the top company in that sector is Apple. We can use an ARIMAX model to analyze the relationship between each company's stock price and macroeconomic indicators such as GDP growth rate, inflation, interest rates, and unemployment.
+
+![](images/10.jpeg){width="714"}
+
+To make the model more robust, we can also use an ARCH/GARCH model to capture the volatility in the financial time series. ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH (Generalized Autoregressive Conditional Heteroskedasticity) models are commonly used to model the conditional variance of a time series, which can help to identify patterns of volatility and predict future fluctuations in the stock price.
+
+The ARIMAX+ARCH/GARCH model can help investors and analysts to understand the relationship between each company's stock price and macroeconomic indicators, and to make more informed investment decisions based on historical patterns and predicted future performance.
+
+[Click to view Consumer Staples Sector Fund](arch_Consumer_Staples_Sector_Fund.html)
+
+[Click to view Utilities Sector Fund](arch_Utilities_Sector_Fund.html)
+
+[Click to view Health Care Sector Fund](arch_Health_Care_Sector_Fund.html)
+
+[Click to view Industrial Sector Fund](arch_Industrial_Sector_Fund.html)
+
+[Click to view Financial Sector Fund](arch_Financial_Sector_Fund.html)
+
+[Click to view Consumer Discretionary Sector Fund](arch_Consumer_Discretionary_Sector_Fund.html)
+
+[Click to view Communication Services Sector Fund](arch_Communication_Services_Sector_Fund.html)
+
+[Click to view Real Estate Sector Fund](arch_Real_Estate_Sector_Fund.html)
+
+[Click to view Materials Sector Fund](arch_Materials_Sector_Fund.html)
+
+[Click to view Technology Sector Fund](arch_Technology_Sector_Fund.html)
+
+[Click to view Energy Sector Fund](arch_Energy_Sector_Fund.html)

@@ -1,0 +1,17 @@
+---
+title: "ARIMA Model for US Stock Indices"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+The US stock market is one of the largest and most influential markets in the world, with the Dow Jones, Nasdaq, and S&P 500 indices serving as key indicators of market performance. To accurately forecast future values of these indices, it is essential to identify and model the complex patterns and trends that are often present in the data. The ARIMA model is a commonly used time series analysis technique that is well-suited for modeling and forecasting stock market indices, as it allows analysts to capture the underlying patterns and dynamics of the data. By fitting an ARIMA model to historical data, analysts can make more accurate predictions about future stock market performance, helping investors and financial institutions make informed decisions.
+
+[Click to view the ARIMA Page for Dow Jones Index](arima_index_dow_jones.html)
+
+[Click to view the ARIMA Page for NASDAQ Composite Index](arima_index_nasdaq.html)
+
+[Click to view the ARIMA Page for S&P 500 Index](arima_index_sp500.html)

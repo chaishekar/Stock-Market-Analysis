@@ -1,0 +1,261 @@
+---
+title: "ARIMA Model for Real Estate Sector Fund"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+During exploratory data analysis (EDA), it was observed that the raw data is often non-stationary, exhibiting trends, seasonality, and other complex patterns that can make modeling and forecasting difficult. To address this issue, the data is often differentiated to achieve stationarity, which is a key assumption of the ARIMA model.
+
+Differencing involves calculating the difference between each data point and the previous data point, which can help to remove trends and seasonality from the data. The goal is to create a new series of data that is stationary, meaning that the statistical properties of the data do not change over time.
+
+#### Differentiated Time Series Plot
+
+::: panel-tabset
+##### Plot
+
+```{r warning=FALSE}
+#import the data
+df <- read.csv("DATA/CLEANED DATA/XLRE_raw_data.csv")
+#convert to time series data
+myts<-ts(df$XLRE.Adjusted,frequency=252,start=c(2016,1,1), end = c(2023,3,1)) 
+#First order differentiation
+df1 <- diff(myts)
+# Plot 
+myts  %>% diff() %>% ggtsdisplay(main = "First order differentiation") 
+```
+
+##### ACF
+
+```{r warning=FALSE}
+#ACF plot 
+ggAcf(df1,60,main="ACF Plot: First order differentiation") 
+```
+
+##### PACF
+
+```{r warning=FALSE}
+ggPacf(df1,60,main="PACF Plot: First order differentiation") 
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+tseries::adf.test(df1)
+```
+:::
+
+After analyzing the ACF and PACF plots, it can be observed that most of the bar lines lie between the blue lines, indicating that the time series is stationary. This has been further confirmed through an Augmented Dickey-Fuller test as the p-value is less than 0.05. Once the data is stationary, the next step is to model it using ARIMA. The combination of ACF and PACF plots can help determine the appropriate values for p, d, and q in the ARIMA model. The order of differencing required to achieve stationarity gives the d value. The p value is determined by examining significant spikes at various lags in the PACF plot, while the q value is determined through significant spikes in the ACF plot. It is important to consider other methods such as grid search and information criteria to ensure the most appropriate model is selected.
+
+Here the parameters are d = 1 p = 0,1,2,3,4 (PACF Plot) q = 0,1,2,3 (ACF Plot)
+
+#### Model Selection
+
+::: panel-tabset
+##### ARIMA Result
+
+```{r warning=FALSE}
+######################## Check for different combinations ########
+d=1
+i=1
+temp = data.frame()
+ls=matrix(rep(NA,6*20),nrow=20) #nrow = 5x4x1
+
+
+for (p in 1:5)# p=0,1,2,3,4 :5
+{
+  for(q in 1:4)# q=0,1,2,3 :4
+  {
+    for(d in 1)# d=1 :1
+    {
+      
+      if(p-1+d+q-1<=8)
+      {
+        
+        model<- Arima(myts,order=c(p-1,d,q-1),include.drift=TRUE) 
+        ls[i,]= c(p-1,d,q-1,model$aic,model$bic,model$aicc)
+        i=i+1
+        
+      }
+      
+    }
+  }
+}
+
+model = as.data.frame(ls)
+names(model)= c("p","d","q","AIC","BIC","AICc")
+
+#temp
+knitr::kable(model)
+
+```
+
+##### Auto Arima Model
+
+```{r warning=FALSE}
+auto.arima(myts)
+```
+:::
+
+The given table provides different ARIMA models with their corresponding AIC and BIC values. By sorting the table according to each criterion, we can identify the models with the lowest values. The smallest AIC and BIC value corresponds to an ARIMA (3,1,1) mode. Additionally, the auto.arima function in R suggests an ARIMA (4,1,1) model as the best fit for the data. Since there are different models to choose from, it is important to perform model diagnostics to determine the best model for the data. These diagnostics can include checking for residual normality, checking for autocorrelation and partial autocorrelation in the residuals, and comparing the forecasted values to the actual values. By conducting these tests, we can determine which model provides the best fit for the data and is therefore the most appropriate to use for forecasting future values.
+
+#### Model Diagnostic
+
+::: panel-tabset
+##### Model 1 Plot
+
+```{r warning=FALSE}
+model_output <- capture.output(sarima(myts,3,1,1))
+```
+
+##### Model 1
+
+```{r warning=FALSE}
+cat(model_output[46:79], model_output[length(model_output)], sep = "\n") 
+```
+
+##### Model 2 Plot
+
+```{r warning=FALSE}
+model_output <- capture.output(sarima(myts,4,1,1))
+```
+
+##### Model 2
+
+```{r warning=FALSE}
+cat(model_output[53:86], model_output[length(model_output)], sep = "\n") 
+```
+:::
+
+To determine which model diagnosis is the best, we need to consider some key factors such as the coefficient estimates and standard errors, AIC, BIC, p-values, and the log-likelihood. Comparing the two models, model 1 is the best because it has the lowest BIC and AIC value when compared and the AIC value are almost the same, which indicate better goodness of fit. Also, all the coefficient estimates in the model are significant, as evidenced by the p-values are better than model 2, which implies that there is a strong correlation between the variables. The t-values are high, indicating that the estimates are highly reliable.
+
+Therefore, based on the AIC and BIC values, the significance of the coefficient estimates, and the reliability of the estimates, we can conclude that model 1 is the best model diagnosis. Therefore, (3,1,1) is the best model for this time series.
+
+The best model identified is ARIMA(3,1,1). By analyzing the standardized residuals plot, it can be observed that the mean is close to 0 and the variance is slightly higher than 1. Deviations from these values could indicate poor model fit. However, in this case, the model seems to be well-fitted. The ACF plot of residuals shows very few significant lags, which is a positive sign for the model. The qq-plot also suggests normality in the residuals. Additionally, the p-values for the Ljung-Box test are greater than 0.05, indicating that the residuals are independent, which is favorable for the model's accuracy.
+
+The equation for this model: $$(1-\phi_1B-\phi_2B^2-\phi_3B^3)(Yt - \mu) = (1+\theta_1B)\epsilon_t$$
+
+#### Forcast
+
+::: panel-tabset
+##### Short Term Forcast
+
+```{r warning=FALSE}
+myts %>%
+  Arima(order=c(3,1,1),include.drift = TRUE) %>%
+  forecast %>%
+  autoplot(main = "Real Estate Sector Fund Stock Prices Prediction") +
+  ylab("stock prices") + xlab("Year")
+```
+
+##### Long term Forcast
+
+```{r warning=FALSE}
+sarima.for(myts,182, 3,1,1, main='Real Estate Sector Fund Stock Prices Prediction')
+```
+:::
+
+The two figures above show an idea of the short term and the long-term forecasted stock price. The forecasted values is be based on the estimated parameters of the model, which were obtained by fitting it to the historical data. One way to assess the accuracy of the forecasts is to use cross-validation, which involves splitting the data into training and testing sets and comparing the predicted values to the actual values in the test set. This can help to identify any potential problems with the model and to fine-tune the model parameters.
+
+::: panel-tabset
+##### 12 Step ahead Cross Validation
+
+```{r warning=FALSE}
+#a seasonal cross validation using 12 steps ahead forecasts
+farima1 <- function(x, h){forecast(Arima(x, order=c(3,1,1)), h=h)}
+
+# Compute cross-validated errors for up to 12 steps ahead
+e <- tsCV(myts, forecastfunction = farima1, h = 12)
+
+# Compute the MSE values and remove missing values
+mse <- colMeans(e^2, na.rm = TRUE)
+
+# Plot the MSE values against the forecast horizon
+data.frame(h = 1:12, MSE = mse) %>%
+  ggplot(aes(x = h, y = MSE)) + geom_point()+geom_line()+ggtitle("12 Step Ahead Cross Validation")
+```
+
+##### 1 Step ahead Cross Validation
+
+```{r warning=FALSE}
+#a seasonal cross validation using 1 steps ahead forecasts
+farima1 <- function(x, h){forecast(Arima(x, order=c(3,1,1)),h=h)}
+
+# Compute cross-validated errors for up to 1 steps ahead
+e <- tsCV(myts, forecastfunction = farima1, h = 1)
+mse <-abs(mean(e,na.rm=TRUE))
+
+# Plot the MSE values against the forecast horizon
+data.frame(h = 1:12, MSE = mse) %>%
+  ggplot(aes(x = h, y = MSE)) + geom_point()+geom_line()+ggtitle("1 Step Ahead Cross Validation")
+```
+:::
+
+The one-step-ahead forecasting plot shows that the MSE seems to be stable. The MSE is tend to rise by 12 steps at each step of cross-validation. Lastly, the above-mentioned ARIMA model should be compared to benchmark methods before being used for a long time.
+
+#### Model Comparison
+
+::: panel-tabset
+##### Plot
+
+```{r}
+fit <- Arima(myts, order=c(3,1,1))
+autoplot(myts) +
+  autolayer(meanf(myts, h=182),
+            series="Mean", PI=FALSE) +
+  autolayer(naive(myts, h=182),
+            series="Naïve", PI=FALSE) +
+  autolayer(snaive(myts, h=182),
+            series="SNaïve", PI=FALSE)+
+  autolayer(rwf(myts, h=182, drift=TRUE),
+            series="Drift", PI=FALSE)+
+  autolayer(forecast(fit,182), 
+            series="fit",PI=FALSE) +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
+##### Model Error Table
+
+```{r}
+summary <- summary(fit)
+snaive <- snaive(myts, h=182)
+accuracy(snaive)
+summary
+```
+
+| Error |        Model |    Snavie |
+|:------|-------------:|----------:|
+| ME    |  0.001165962 | 0.3348181 |
+| RMSE  |    0.4838699 |  8.889729 |
+| MAE   |    0.2666752 |   6.46935 |
+| MPE   | -0.007797867 | -2.538989 |
+| MAPE  |    0.8598005 |  21.31273 |
+| MASE  |   0.04122133 | 1.0000000 |
+| ACF1  | -0.001108128 | 0.9965303 |
+:::
+
+The ARIMA fitted and snaive forecast tracks the actual data points very closely when compared to other model. The other forecast methods are less accurate when compared. From the table, Model error measurements of fit are much lower than snaive method.We can conclude that the fitted model is good.

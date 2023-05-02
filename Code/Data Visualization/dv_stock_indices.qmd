@@ -1,0 +1,347 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    code-link: true
+    page-layout: full
+---
+## Data Visualization for US Stock Indices
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+```
+
+Stock market indexes all over the world are good measures of both the world economy and the economies of individual countries. In the United States, the S&P 500, the Dow Jones Industrial Average, and the Nasdaq Composite get the most attention from investors and the media. There are more than just these three indexes that make up the U.S. stock market. About 5,000 more are there.
+
+With so many indexes, the U.S. market has many ways to classify things and methods that can be used for many different things. Most of the time, the news tells us several times a day how the top three indexes are going, using important news stories to show how they are going up or down. Investment managers use indexes to measure how well an investment is doing.
+
+Indexes are used by all types of investors as proxies for performance and guides for how to put their money to work. Indexes are also the basis for passive index investing, which is usually done through exchange-traded funds that track indexes. Overall, knowing how market indexes are made and how they are used can make many different types of investing easier to understand.
+
+```{r warning=FALSE}
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+#America's top stock market index
+tickers = c("^GSPC","^DJI","^IXIC")
+
+for (i in tickers){
+  getSymbols(i,
+             from = "2000-01-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+#create dataframe
+dv_america_stock_index_data = cbind(GSPC,DJI,IXIC)
+dv_america_stock_index_data = as.data.frame(dv_america_stock_index_data)
+#export it to csv file
+write_csv(dv_america_stock_index_data, "DATA/RAW DATA/dv_america_stock_index_data.csv")
+
+stock <- data.frame(GSPC$GSPC.Adjusted,
+                    DJI$DJI.Adjusted,
+                    IXIC$IXIC.Adjusted)
+
+
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+colnames(stock)=c("GSPC","DJI","IXIC","Dates","date")
+
+
+#remove columns
+stock <- stock[,-c(4)]
+
+g1<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=GSPC, colour="GSPC"))+
+  geom_line(aes(y=DJI, colour="DJI"))+
+  geom_line(aes(y=IXIC, colour="IXIC"))+
+  scale_color_brewer(palette="Greens")+
+  theme_bw()+
+   labs(
+    title = "America's Top 3 Stock Market Index History",
+    subtitle = "From Jan 2000-Jan 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Indices")) 
+
+plot = ggplotly(g1)%>%
+  layout(title = list(text = paste0("America's Top 3 Stock Market Index History",
+                                    '<br>',
+                                    '<sup>',
+                                    'From Jan 2000-Jan 2023',
+                                    '</sup>')))
+ggplotly(plot)%>%layout(hovermode = "x")
+
+```
+
+Each of the indices' stock prices tend to have a upward trend. This is because the companies in each of the indices are growing. Compared to S&P 500 and NASDAQ, the Dow Jones index has the largest share. This could be because of the companies in each index and how many companies are in each. The effect of covud on all businesses causes stock prices to drop at the beginning of 2020.
+
+### DOW Jones Index
+
+The Dow Jones Industrial Average (DJIA) is one of the oldest, best-known, and most-used indexes in the world. It has the shares of 30 of the biggest and most powerful companies in the US.The DJIA is an index based on prices. At first, it was made by adding up the price per share of each company's stock in the index and dividing by the number of companies. The index is no longer this easy to figure out, though. Over time, stock splits, spin-offs, and other things have changed the divisor, which is a number that Dow Jones uses to figure out the level of the DJIA. This has made the divisor a very small number.
+
+About a quarter of the value of the whole U.S. stock market is represented by the DJIA, but a percent change in the Dow is not a sure sign that the whole market has dropped by the same percent. When the Dow goes up or down, it shows how investors feel about the earnings and risks of the big companies in the index. Because the way people feel about large-cap stocks is often different from how they feel about small-cap stocks, international stocks, or technology stocks, the Dow shouldn't be used to show how people feel about other types of stocks in the market.
+
+In general, the Dow is known for having a list of the best blue-chip companies on the U.S. market that pay regular dividends. So, it doesn't have to be a reflection of the whole market, but it can be a reflection of the market for blue-chip, dividend-value stocks.
+
+##### List of Top 10 DOW Jones Companies by Weight
+
+```{r ,echo=FALSE}
+dowjones_companies = read.csv("DATA/TABLES/dow jones 10 companies.csv")
+table1 = knitr::kable(dowjones_companies); table1
+```
+
+```{r warning=FALSE, message=FALSE}
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+tickers = c("UNH","GS","HD", "MCD","MSFT","CAT","AMGN","V","BA","HON")
+for (i in tickers){
+  getSymbols(i,
+             from = "2012-01-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+stock <- data.frame(UNH$UNH.Adjusted,
+                    GS$GS.Adjusted,
+                    HD$HD.Adjusted,
+                    MCD$MCD.Adjusted,
+                    MSFT$MSFT.Adjusted,
+                    CAT$CAT.Adjusted,
+                    AMGN$AMGN.Adjusted,
+                    V$V.Adjusted,
+                    HON$HON.Adjusted,
+                    BA$BA.Adjusted)
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+
+
+g1<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=UNH, colour="UNH"))+
+  geom_line(aes(y=GS, colour="GS"))+
+  geom_line(aes(y=HD, colour="HD"))+
+  geom_line(aes(y=MCD, colour="MCD"))+
+  geom_line(aes(y=MSFT, colour="MSFT"))+
+  geom_line(aes(y=CAT, colour="CAT"))+
+  geom_line(aes(y=AMGN, colour="AMGN"))+
+  geom_line(aes(y=V, colour="V"))+
+  geom_line(aes(y=HON, colour="HON"))+
+  geom_line(aes(y=BA, colour="BA"))+
+  scale_color_brewer(palette="OrRd")+
+  theme_bw()+
+   labs(
+    title = "Stock Prices for the Top 10 Dow Jones Companies",
+    subtitle = "From Jan 2012-Jan 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Companies")) 
+
+plot = ggplotly(g1)%>%
+  layout(title = list(text = paste0("Stock Prices for the Top 10 Dow Jones Companies",
+                                    '<br>',
+                                    '<sup>',
+                                    'From Jan 2012-Jan 2023',
+                                    '</sup>')))
+ggplotly(plot)%>%layout(hovermode = "x")
+
+```
+
+Here, the top 10 companies in the Dow Jones Index are shown as a time series. The companies are sorted by how much they make up the index. As it is clear that all the companies tend to go up, we can see that UNH has the biggest share of stock prices compared to the other companies. There has been a drop in the price of Home Depot Inc.'s stock, which was one of the best-performing stocks from 2018 to 2020. However, the drop may have been caused more by macro conditions and negative sentiment than by problems with the company itself or investors' worries about a slowdown in the home improvement market. Because of the effect of covid, the price of UNH stock is going up. People started investing in health insurance, but the price has gone up and down because of this. Goldman Sachs Group, Inc. has a good stock price, but the price has gone up and down because of the pandemic in the fourth quarter. This was caused by weakness in investment banking and asset management, as well as a large loss in the unit that includes its consumer banking business.
+
+### NASDAQ Composite Index
+
+Most investors know that the Nasdaq is where tech stocks trade. The Nasdaq Composite Index is a list of all the stocks that are traded on the Nasdaq stock exchange. It is based on how much each stock is worth on the market. Some of the companies in this index are not from the U.S. People know that this index has a lot of tech companies in it. It has things from the tech market like software, biotech, semiconductors, and more.
+
+There are a lot of technology stocks in this index, but there are also stocks from other industries. Investors can also buy securities from a wide range of industries, such as financials, industrials, insurance, transportation, and others.
+
+There are both big and small companies in the Nasdaq Composite. However, unlike the Dow and the S&P 500, it also has a lot of small, risky companies. So, its movement is usually a good sign of how well the technology industry is doing and how investors feel about riskier stocks.
+
+##### List of Top NASDAQ Companies by Weight
+
+```{r ,echo=FALSE}
+NASDAQ_companies = read.csv("DATA/TABLES/NASDAQ_companies.csv")
+table2 = knitr::kable(NASDAQ_companies); table2
+```
+
+```{r warning=FALSE, message=FALSE}
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+tickers = c("AAPL","MSFT","AMZN", "NVDA","TSLA","GOOG","PEP","GOOGL","META","AVGO")
+for (i in tickers){
+  getSymbols(i,
+             from = "2015-01-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+stock <- data.frame(AAPL$AAPL.Adjusted,
+                    MSFT$MSFT.Adjusted,
+                    AMZN$AMZN.Adjusted,
+                    NVDA$NVDA.Adjusted,
+                    TSLA$TSLA.Adjusted,
+                    GOOG$GOOG.Adjusted,
+                    GOOGL$GOOGL.Adjusted,
+                    META$META.Adjusted,
+                    PEP$PEP.Adjusted,
+                    AVGO$AVGO.Adjusted)
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+
+
+g2<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=AAPL, colour="AAPL"))+
+  geom_line(aes(y=MSFT, colour="MSFT"))+
+  geom_line(aes(y=AMZN, colour="AMZN"))+
+  geom_line(aes(y=NVDA, colour="NVDA"))+
+  geom_line(aes(y=TSLA, colour="TSLA"))+
+  geom_line(aes(y=GOOG, colour="GOOG"))+
+  geom_line(aes(y=GOOGL, colour="GOOGL"))+
+  geom_line(aes(y=META, colour="META"))+
+  geom_line(aes(y=PEP, colour="PEP"))+
+  geom_line(aes(y=AVGO, colour="AVGO"))+
+  scale_color_brewer(palette="PuRd")+
+  theme_bw()+
+   labs(
+    title = "Stock Prices for the Top 10 NASDAQ Companies",
+    subtitle = "From Jan 2015-Jan 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Companies")) 
+
+plot = ggplotly(g2)%>%
+  layout(title = list(text = paste0("Stock Prices for the Top 10 NASDAQ Companies",
+                                    '<br>',
+                                    '<sup>',
+                                    'From Jan 2015-Jan 2023',
+                                    '</sup>')))
+ggplotly(plot)%>%layout(hovermode = "x")
+
+```
+
+The weights of the top 10 companies in the NASDAQ Index are used to filter the time series shown here. Broadcom Inc.'s stock price is high compared to others, but it goes up and down a lot. The price drop is mostly due to the fact that the company's earnings growth will slow in fiscal 2019, while the price rise is due to its designs for data centers and networking. When you look at other companies, you can see that they all follow the same pattern. Most of them see a drop in their stock prices at the beginning of 2020, which is because of the covid. Google's stock price has gone down recently, which is because its AI chatbot, Bard, gave a wrong answer.
+
+### S&P 500 Index
+
+The Standard & Poor's 500 Index, or S&P 500, is a list of the 500 best companies in the United States. Stocks are chosen for the index based on their market capitalization, but the constituent committee also looks at their liquidity, public float, sector classification, financial stability, and trading history.
+
+The S&P 500 Index contains about 80% of the total value of the U.S. stock market. The S&P 500 Index is a good way to get a general idea of how the whole U.S. market is doing. Most indexes are based on what something is worth on the market. The S&P 500 Index is the market-weighted index (also referred to as capitalization-weighted).
+
+So, the weight of each stock in the index is the same as its total market capitalization. In other words, the value of the index falls by 10% if the market value of all 500 companies in the S&P 500 falls by 10%.
+
+##### List of Top 10 S&P 500 Companies by Weight
+
+```{r ,echo=FALSE}
+sp500_companies = read.csv("DATA/TABLES/sp500.csv")
+table3 = knitr::kable(sp500_companies); table3
+```
+
+```{r warning=FALSE, message=FALSE}
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+tickers = c("AAPL","MSFT","AMZN", "NVDA","TSLA","GOOGL","GOOG","BRK","UNH","XOM")
+for (i in tickers){
+  getSymbols(i,
+             from = "2015-01-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+stock <- data.frame(AAPL$AAPL.Adjusted,
+                    MSFT$MSFT.Adjusted,
+                    AMZN$AMZN.Adjusted,
+                    NVDA$NVDA.Adjusted,
+                    TSLA$TSLA.Adjusted,
+                    GOOG$GOOG.Adjusted,
+                    GOOGL$GOOGL.Adjusted,
+                    BRK$BRK.Adjusted,
+                    UNH$UNH.Adjusted,
+                    XOM$XOM.Adjusted)
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+
+
+g3<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=AAPL, colour="AAPL"))+
+  geom_line(aes(y=MSFT, colour="MSFT"))+
+  geom_line(aes(y=AMZN, colour="AMZN"))+
+  geom_line(aes(y=NVDA, colour="NVDA"))+
+  geom_line(aes(y=TSLA, colour="TSLA"))+
+  geom_line(aes(y=GOOG, colour="GOOG"))+
+  geom_line(aes(y=GOOGL, colour="GOOGL"))+
+  geom_line(aes(y=BRK, colour="BRK"))+
+  geom_line(aes(y=UNH, colour="UNH"))+
+  geom_line(aes(y=XOM, colour="XOM"))+
+  scale_color_brewer(palette="GnBu")+
+  theme_bw()+
+   labs(
+    title = "Stock Prices for the Top 10 S&P 500 Companies",
+    subtitle = "From Jan 2015-Jan 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Companies")) 
+
+plot = ggplotly(g3)%>%
+  layout(title = list(text = paste0("Stock Prices for the Top 10 S&P 500 Companies",
+                                    '<br>',
+                                    '<sup>',
+                                    'From Jan 2015-Jan 2023',
+                                    '</sup>')))
+ggplotly(plot)%>%layout(hovermode = "x")
+
+```
+
+The time series shown here is filtered by the weights of the top 10 companies in the S&P 500 Index. How much each company makes up the index is used to sort the companies. Since it's clear that all the companies' stock prices tend to go up, we can see that UNH has the most stock prices compared to the other companies. Most of their stock prices will go down at the start of 2020 because of the covid. Recently, Google's stock price went down because its artificial intelligence chatbot, Bard, gave the wrong answer. The price of TESLA stock has been going down since early 2022. This is because investors worry that CEO Elon Musk is too busy with his plan to take over Twitter.

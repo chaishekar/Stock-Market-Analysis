@@ -1,0 +1,35 @@
+---
+title: "ARIMA Model for Sector Market"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+The ARIMA model is a commonly used time series analysis technique for forecasting the performance of sector markets. However, the raw data is often non-stationary, requiring differentiation to achieve stationarity, a key assumption of the model.
+
+With the appropriate order of differencing and seasonality identified using statistical tests, the ARIMA model can be fitted to the data to identify the appropriate AR, I, and MA parameters. It may also be necessary to incorporate relevant exogenous variables into the model to improve forecast accuracy. Overall, the ARIMA model is a powerful tool for modeling and forecasting sector markets, allowing analysts to identify unique patterns and trends and make more accurate predictions about future performance.
+
+[Click to view ARIMA Page for Consumer Staples Sector Fund](arima_sector_consumer_staples.html)
+
+[Click to view ARIMA Page for Utilities Sector Fund](arima_sector_utilites.html)
+
+[Click to view ARIMA Page for Health Care Sector Fund](arima_sector_health_care.html)
+
+[Click to view ARIMA Page for Industrial Sector Fund](arima_sector_industrial.html)
+
+[Click to view ARIMA Page for Financial Sector Fund](arima_sector_financial.html)
+
+[Click to view ARIMA Page for Consumer Discretionary Sector Fund](arima_sector_consumer_discretionary.html)
+
+[Click to view ARIMA Page for Communication Services Sector Fund](arima_sector_communication_services.html)
+
+[Click to view ARIMA Page for Real Estate Sector Fund](arima_sector_real_estate.html)
+
+[Click to view ARIMA Page for Materials Sector Fund](arima_sector_materials_sector.html)
+
+[Click to view ARIMA Page for Technology Sector Fund](arima_sector_technology.html)
+
+[Click to view ARIMA Page for Energy Sector Fund](arima_sector_energy.html)

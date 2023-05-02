@@ -1,0 +1,212 @@
+---
+title: "EDA for GDP Growth Rate"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+GDP growth rate is one of the most important indicators of a country's economic performance, and analyzing its behavior is critical to understanding the underlying factors driving economic growth. Exploratory Data Analysis (EDA) is a powerful tool for gaining insights into GDP growth rate data and identifying patterns and trends that can inform economic policy decisions. In this page, we will explore various EDA techniques that can be applied to GDP growth rate data, such as time series analysis, autocorrelation analysis, seasonality analysis, moving averages, and detrending. By the end of this page, you will have a better understanding of how to apply EDA techniques to GDP growth rate data and draw valuable insights from it.
+
+#### Time Series Plot
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+gdp <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+
+#change date format
+gdp$Date <- as.Date(gdp$DATE , "%m/%d/%Y")
+
+#drop DATE column
+gdp <- subset(gdp, select = -c(1))
+
+#export the cleaned data
+gdp_clean <- gdp
+write.csv(gdp_clean, "DATA/CLEANED DATA/gdp_clean_data.csv", row.names=FALSE)
+
+#plot gdp growth rate 
+fig <- plot_ly(gdp, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(220,20,60)'))
+fig <- fig %>% layout(title = "U.S GPD Growth Rate: 2010 - 2022",xaxis = list(title = "Time"),yaxis = list(title ="GDP Growth Rate"))
+fig
+
+```
+
+The trend in GDP growth rate in the United States from 2010 to 2022 has been characterized by moderate fluctuations, reflecting a range of economic conditions and policy responses. Between 2010 and 2022, the United States experienced a range of GDP growth rates, reflecting various economic conditions and policy responses. In the early years of this period, the economy was still recovering from the 2008 financial crisis, which had led to a prolonged period of slow growth. In 2012, GDP growth began to pick up, reaching 2.8% that year, followed by 1.8% in 2013 and 2.5% in 2014. The peak in this period came in 2018, when the GDP growth rate reached 2.9%. However, the momentum of growth slowed in the years that followed. In 2016, GDP growth declined to 1.6%, followed by 2.2% in 2018, and 2.9% in 2018. By 2019, growth had slowed again to 2.2%. This period of slower growth was attributed to a range of factors, including the tightening of monetary policy by the Federal Reserve, global economic headwinds, and ongoing concerns about political instability and trade tensions. The COVID-19 pandemic in 2020 led to a sharp contraction in economic activity, with GDP growth declining by 3.5%, the largest annual decline since the 1940s. The pandemic resulted in widespread shutdowns of businesses, schools, and public spaces, as well as disruptions to global supply chains and trade. However, the US government and the Federal Reserve responded with a range of fiscal and monetary policies, including direct payments to households, increased unemployment benefits, and massive injections of liquidity into financial markets. These measures helped to mitigate the impact of the pandemic on the economy. In 2021, the US economy began to recover, with GDP growth projected to reach 6.3% by the end of the year. This rebound was due to a combination of factors, including the easing of pandemic-related restrictions, increased vaccination rates, and the continuation of government stimulus measures.
+
+The GDP growth rate in the United States from 2010 to 2021, there appears to be some seasonality in the data. he seasonality appears to be relatively consistent over time, with spikes in GDP growth rate occurring in the second quarter of each year, followed by a dip in the third quarter. This pattern is likely due to various factors, such as changes in consumer spending and production schedules. Multiplicative decomposition model may be more appropriate, as it accounts for changes in both the level and the variability of the data.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#convert to ts data
+myts<-ts(gdp$value,frequency=4,start=c(2010/1/1))
+#decomposition
+orginial_plot <- autoplot(myts,xlab ="Year", ylab = "GDP Growth Rate", main = "U.S GDP Growth Rate: 2010 - 2021")
+decompose = decompose(myts,"multiplicative")
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+#adjusted decomposition
+trendadj <- myts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='seasonal') +ggtitle('Adjusted trend component in the multiplicative time series model')
+seasonaladj <- myts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the multiplicative time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+```
+:::
+
+When compared to the original plot, the adjusted seasonal component tends to have more fluctuation, and the model is more variable than the original plot, where the plot changes over time but the trend stays the same.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(myts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for U.S GDP Growth Rate: 2010 - 2021")
+```
+
+##### Monthly Time Lags
+
+```{r arning=FALSE}
+#montly data
+mean_data <- gdp %>% 
+  mutate(month = month(Date), year = year(Date)) %>% 
+  group_by(year, month) %>% 
+  summarize(mean_value = mean(value))
+
+month<-ts(mean_data$mean_value,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 4)
+
+#Lag plot for month
+ts_lags(month,lags = c(1, 4, 7, 10) )
+
+```
+:::
+
+The lag plot shows that there is a cluster in the middle, and the monthly lag plot shows that there is no autocorrelation.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(month, color = "Purples",title = 'Seasonality U.S GDP Growth Rate: 2010 - 2021')
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(month, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot forU.S GDP Growth Rate: 2010 - 2021")
+```
+:::
+
+The seasonality plots shows that series follow seasonality, as the heat map shows no much difference with each year and the line graph lie on similar values for most of the year.
+
+#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="gdp") +
+  autolayer(ma(month,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("GDP Growth Rate 2010 - 2022 (4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="gdp") +
+  autolayer(ma(month,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("GDP Growth Rate 2010 - 2022 (1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="gdp") +
+  autolayer(ma(month,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("GDP Growth Rate 2010 - 2022 (3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+:::
+
+The three plots show the same data series of GDP growth rate from 2010 to 2022, but each plot has a different moving average smoothing applied to it. The first plot shows a 4-month moving average, the second plot shows a 1-year moving average, and the third plot shows a 3-year moving average.
+
+Looking at the three plots, we can see that the 4-month moving average plot has a lot of fluctuations, and it follows the ups and downs of the original data series more closely. The 1-year moving average plot has less fluctuations compared to the 4-month moving average plot, and it provides a smoother trend of the data series. The 3-year moving average plot has even less fluctuations and a much smoother trend than the previous two plots.
+
+The choice of moving average window size depends on the analyst's preference and the objective of the analysis. Shorter window sizes like the 4-month moving average can provide more detailed insights into the data series, but they may also be more susceptible to noise and fluctuations. Longer window sizes like the 3-year moving average can provide a more stable and robust trend but may smooth out important details in the data series. As the moving average increases, GDP Growth Rtae tend to have no trend, it seem to be stable.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+#ACF plots for month data
+ggAcf(myts)+ggtitle("ACF Plot for GDP Growth Rate: 2010 - 2022")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF plots for month data
+ggPacf(myts)+ggtitle("PACF Plot for GDP Growth Rate: 2010 - 2022")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+# ADF Test
+tseries::adf.test(myts)
+```
+:::
+
+The above autocorrelation plots show that the series doesn't change with the seasons, which indicates that there series is stationary. This is verified was checked using the Augmented Dickey-Fuller Test and the result of the test says that series is stationary because the p value is less than 0.05.

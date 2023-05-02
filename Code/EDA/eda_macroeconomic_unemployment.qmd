@@ -1,0 +1,246 @@
+---
+title: "EDA for Unemployment Rate"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+Unemployment is a critical macroeconomic indicator that measures the percentage of the labor force that is actively seeking employment but unable to find work. Exploratory Data Analysis (EDA) is a powerful technique for analyzing unemployment rate data and gaining insights into the factors driving unemployment. In this page, we will explore various EDA techniques that can be applied to unemployment rate data, such as time series analysis, autocorrelation analysis, seasonality analysis, moving averages, and detrending. By the end of this page, you will have a better understanding of how to apply EDA techniques to unemployment rate data and draw valuable insights from it.
+
+#### Time Series Plot
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+unemployment_rate <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#change date format
+unemployment_rate$Date <- as.Date(unemployment_rate$Date , "%m/%d/%Y")
+
+# export the data
+write.csv(unemployment_rate, "DATA/CLEANED DATA/unemployment_rate_clean_data.csv", row.names=FALSE)
+
+#plot unemployment rate 
+fig <- plot_ly(unemployment_rate, x = ~Date, y = ~Value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(255,215,0)'))
+fig <- fig %>% layout(title = "U.S Unemployment Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Unemployment Rate"))
+fig
+
+```
+
+The unemployment rate in the United States has seen significant fluctuations since 2010, with various economic factors contributing to changes in the rate over the years. The data from the Federal Reserve Economic Data (FRED) series shows that the unemployment rate peaked at 9.9% in 2010, following the 2008 financial crisis. However, it has steadily declined over the years and currently stands at 3.9% as of February 2023.
+
+The first half of the 2010s saw a slow but steady decline in the unemployment rate, dropping from the 9.9% peak in 2010 to 5.3% by 2018. The latter half of the decade saw even further improvements, with the rate hitting a low of 3.5% in September 2019. However, the onset of the COVID-19 pandemic in early 2020 led to a sharp increase in unemployment, with the rate skyrocketing to 14.8% in April of that year.
+
+Since then, the unemployment rate has been slowly but steadily improving as the economy recovers from the pandemic-induced recession. By the end of 2021, the rate had fallen to 4.2% and has continued to decline into 2022 and 2023. However, it is worth noting that some industries and sectors are still struggling to recover from the pandemic, and some individuals have not yet returned to the labor force, which could impact the overall unemployment rate.
+
+Overall, the unemployment rate in the United States has undergone significant fluctuations over the past decade, with various economic and social factors contributing to the changes.
+
+From the graph, it appears that the magnitude of the seasonal fluctuations in the unemployment rate has remained relatively constant over time, while the overall trend has shown both increasing and decreasing phases. Therefore, an additive decomposition method could be appropriate for analyzing the time series data.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#convert the data to ts data
+myts<-ts(unemployment_rate$Value,frequency=12,start=c(2010/1/1))
+#decomposition
+orginial_plot <- autoplot(myts,xlab ="Year", ylab = "Interest Rate", main = "U.S Unemployment Rate: January 2010 - March 2023")
+decompose = decompose(myts,"additive")
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+trendadj <- myts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='seasonal') +ggtitle('Adjusted trend component in the additive time series model')
+seasonaladj <- myts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the additive time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+```
+:::
+
+When compared to the original figure, the corrected seasonal component shows some seasonality in the model, but the adjusted trend component has a stable trend through time with a high increase due to pandemic, but there the trend dropped after few months.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(myts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for U.S Unemployment Rate: January 2010 - March 2023")
+```
+
+##### Monthly Time Lags
+
+```{r arning=FALSE}
+#monthly data
+mean_data <- unemployment_rate %>% 
+  mutate(month = month(Date), year = year(Date)) %>% 
+  group_by(year, month) %>% 
+  summarize(mean_value = mean(Value))
+month<-ts(mean_data$mean_value,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 12)
+#Lag plot for monthly data
+ts_lags(month)
+
+```
+:::
+
+There should be a strong relationship between the series and the pertinent lag from January 2010 to March 2023 because there is a positive correlation and an inclination angle of 45 degrees in the lag plot. This is the characteristic lag plot of a process with strong positive autocorrelation. One observation and the next have a significant link, making such processes remarkably non-random. Investigating seasonality also involves graphing observations over a larger range of time intervals, or the lags. To make the time series data easier to understand and create graphs with more clarity, the time series data is combined with monthly data using the mean function. A closer look at the previous graph indicates that there are more dots on the diagonal line at 45 degrees. The second graph displays the variable's monthly variation along the vertical axis. The lines link the points in the order of time. There is a correlation and it is significantly positive, supporting the strong seasonality of the data.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(myts, color = "Oranges", title = "Seasonality plot for Unemployment Rate USA: 2010 - 2021")
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(month, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot forU.S Interest Rate: 2010 - 2021")
+```
+:::
+
+The Seasonality Heatmap for the Unemployment Rate data from JAN 2010 - March 2023 does not indicate any significant seasonality in the data. The heatmap displays the mean value of the time series for each month and year combination, with darker colors indicating higher values. The absence of any discernible patterns or darker colors in specific months or years suggests that there is no consistent seasonal trend in the data. However, the yearly line graph shows some variations in the interest rates over the years, with some years showing higher rates than others. Each year's data is represented by a line, and the months are plotted on the x-axis. Overall, the lack of clear seasonality in both the heatmap and yearly line graph suggests that other factors beyond seasonality, such as economic conditions, government policies, and global events, are likely driving the fluctuations in unemployment rates. \#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="unemployment_rate") +
+  autolayer(ma(month,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Unemployment Rate January 2010 - March 2023 (4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="unemployment_rate") +
+  autolayer(ma(month,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Unemployment Rate January 2010 - March 2023 (1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="unemployment_rate") +
+  autolayer(ma(month,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Unemployment Rate January 2010 - March 2023 (3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+
+##### 5 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="unemployment_rate") +
+  autolayer(ma(month,61), series="5 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Unemployment Rate January 2010 - March 2023 (5 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","5 Year MA"="red"),
+                      breaks=c("Data","5 Year MA"))
+ma
+```
+:::
+
+The Unemployment Rate is displayed for the time period between January 2010 and March 2023 in the four plots above, which have been smoothed using 4-month, 1-year, 3-year, and 5-year moving averages. We can observe from the graphs that the moving average values have been rising over time. Given that it captures the short-term differences in stock prices, the 4-month MA plot exhibits a great deal of volatility, which is to be expected. The 1-year, 3-year, and 5-year MA plots, on the other hand, tame the oscillations and reveal the general direction of stock prices. We can see that the 5-year MA plot, which considers a longer time period than the other plots, shows a trend that is smoother. The 3-year MA plot similarly shows a fairly smooth trend, but unlike the 5-year MA plot, it also shows shorter-term variability. Even more susceptible to short-term changes in stock prices is the 1-year MA plot. The trend for Unemployment Rate was downward from 2010 to 2019, but there is increase in the moving average due to the increase in unemployment rate in US during pandemic.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+#ACF plots 
+ggAcf(myts)+ggtitle("ACF Plot for Unemployment Rate: January 2010 - March 2023")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF plots for monthly data
+ggPacf(myts)+ggtitle("PACF Plot for Unemployment Rate: January 2010 - March 2023")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+# ADF Test
+tseries::adf.test(myts)
+```
+:::
+
+The autocorrelation function plot, which is the acf graph for monthly data, clearly shows autocorrelation in lag. The series appears to be seasonal, according to the lag plots and autocorrelation plots displayed above, proving that it is not stable. The Augmented Dickey-Fuller Test, which reveals that the series is not stationary if the p value is more than 0.05, was also used to validate it. The p value obtained from ADF test is greater than 0.05, which indicates taht the series is not stationary.
+
+#### Detrend and Differenced Time Series
+
+::: panel-tabset
+##### Linear Fitting Model
+
+```{r warning=FALSE}
+fit = lm(myts~time(myts), na.action=NULL) 
+summary(fit) 
+```
+
+##### ACF Plot
+
+```{r warning=FALSE}
+# plot ACFs
+plot1 <- ggAcf(myts, 48, main="Original Data: Unemployment Rate")
+plot2 <- ggAcf(resid(fit), 48, main="Detrended data") 
+plot3 <- ggAcf(diff(myts), 48, main="First differenced data")
+grid.arrange(plot1, plot2, plot3,nrow=3)
+```
+:::
+
+The estimated slope coefficient β1, -0.38635 With a standard error of 0.03587, yielding a significant estimated increase of stock price is very less yearly. Equation of the fit for stationary process: $$\hat{y}_{t} = x_{t}+(785.15846)-(0.38635)t$$
+
+From the above graph we can say that there is high correlation in the original plot, but in the detrended plot the correlation is reduced but there is still correlation in the detrended data.But when the first order difference is applied the high correlation is removed but there is seasonal correlation.
+
+As depicted in the above figure, the series is now stationary and ready for future study.
+

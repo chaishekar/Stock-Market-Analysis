@@ -1,0 +1,42 @@
+---
+title: "EDA for Sector Market"
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+Exploratory Data Analysis (EDA) for sector market stocks involves analyzing time series data to identify the underlying patterns and characteristics of the stocks within a particular sector. A sector market refers to a group of companies that operate in the same industry, such as technology or healthcare. EDA for sector market stocks typically involves analyzing the daily closing prices of individual stocks within a sector and examining key aspects such as autocorrelation, seasonality, trend, and stationarity.
+
+One of the key aspects of EDA for sector market stocks is identifying the presence of autocorrelation. Autocorrelation refers to the correlation between a stock's price and its past prices. The autocorrelation function (ACF) and partial autocorrelation function (PACF) plots can help identify the degree of correlation between the stock's price and its past prices. This information can be useful for forecasting future prices and identifying potential patterns in the data.
+
+Another important aspect of EDA for sector market stocks is identifying the presence of seasonality. Seasonality refers to a pattern that repeats itself in the stock prices over regular intervals, such as daily, weekly, or monthly. Identifying seasonality is important as it can help us identify potential patterns and trends in the data, and it can inform our modeling approach.
+
+Additionally, examining moving averages and detrending can help identify the underlying trend in the stock prices. Moving averages are used to smooth out short-term fluctuations in the data, and detrending can help identify the underlying trend that is not related to the seasonal or cyclical fluctuations in the data.
+
+Finally, testing for stationarity is important as it allows us to apply statistical models that assume the data to be stationary. Stationarity refers to the property of a time series where its statistical properties, such as mean and variance, remain constant over time. If the data is non-stationary, it can be transformed to become stationary through techniques such as differencing or taking logarithms.
+
+This information can be used to inform our modeling approach, identify potential patterns and trends, and improve our investment strategies within a particular industry sector.
+
+[Click to view EDA Page for Consumer Staples Sector Fund](eda_sector_consumer_staples.html)
+
+[Click to view EDA Page for Utilities Sector Fund](eda_sector_utilites.html)
+
+[Click to view EDA Page for Health Care Sector Fund](eda_sector_health_care.html)
+
+[Click to view EDA Page for Industrial Sector Fund](eda_sector_industrial.html)
+
+[Click to view EDA Page for Financial Sector Fund](eda_sector_financial.html)
+
+[Click to view EDA Page for Consumer Discretionary Sector Fund](eda_sector_consumer_discretionary.html)
+
+[Click to view EDA Page for Communication Services Sector Fund](eda_sector_communication_services.html)
+
+[Click to view EDA Page for Real Estate Sector Fund](eda_sector_real_estate.html)
+
+[Click to view EDA Page for Materials Sector Fund](eda_sector_materials_sector.html)
+
+[Click to view EDA Page for Technology Sector Fund](eda_sector_technology.html)
+
+[Click to view EDA Page for Energy Sector Fund](eda_sector_energy.html)

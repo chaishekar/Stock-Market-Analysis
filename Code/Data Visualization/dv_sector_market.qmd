@@ -1,0 +1,44 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    code-link: true
+    page-layout: full
+---
+
+## Data Visualization for Sector Stock Market
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+```
+
+On the stock market, a sector is a group of stocks that are all in the same industry and are very similar to each other. The Global Industrial Classification Standard, which is the most common way to group things, says that there are 11 different stock market sectors (GICS).
+
+```{r ,echo=FALSE}
+sector_companies = read.csv("DATA/TABLES/sector_symbol.csv")
+table4 = knitr::kable(sector_companies); table4
+```
+
+![](TABLEAU/sector_market_dv.png)
+
+::: {align="center"}
+[View the visualization](https://public.tableau.com/views/SECTORMARKET/Sheet2?:language=en-US&:display_count=n&:origin=viz_share_link)
+:::
+
+There are 11 parts to the sector market, and each has companies with good stock prices. When we look at the graph, we can see that the Consumer Discretionary sector has higher stock prices than other sectors. This is because there is a chance for high returns, especially when the economy is doing well and consumers are spending a lot. Because they are near the middle of the risk spectrum, stocks in the Financial Sector are worth the least. They can be prone to recessions and are sensitive to changes in interest rates, to name just two major risks. But like most other kinds of businesses, the risk of bank stocks can vary a lot from one company to the next. We can also guess that most sector prices have been going up since 2021, which could be because of post covid.

@@ -1,0 +1,324 @@
+---
+title: "EDA for NADSAQ Composite Index"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+
+##### Time Series Plot
+
+```{r warning=FALSE}
+# get data
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+
+data = getSymbols("^IXIC",src='yahoo',from = '2010-01-01',to = "2023-03-01")
+
+df <- data.frame(Date=index(IXIC),coredata(IXIC))
+
+# create Bollinger Bands
+bbands <- BBands(IXIC[,c("IXIC.High","IXIC.Low","IXIC.Close")])
+
+# join and subset data
+df <- subset(cbind(df, data.frame(bbands[,1:3])), Date >= "2010-01-01")
+
+#export data
+nasdaq_raw_data <- df
+write.csv(nasdaq_raw_data, "DATA/CLEANED DATA/nasdaq_raw_data.csv", row.names=FALSE)
+
+# colors column for increasing and decreasing
+for (i in 1:length(df[,1])) {
+  if (df$IXIC.Close[i] >= df$IXIC.Open[i]) {
+      df$direction[i] = 'Increasing'
+  } else {
+      df$direction[i] = 'Decreasing'
+  }
+}
+
+i <- list(line = list(color = '#CCCCFF'))
+d <- list(line = list(color = '#7F7F7F'))
+
+# plot candlestick chart
+
+fig <- df %>% plot_ly(x = ~Date, type="candlestick",
+          open = ~IXIC.Open, close = ~IXIC.Close,
+          high = ~IXIC.High, low = ~IXIC.Low, name = "IXIC",
+          increasing = i, decreasing = d) 
+fig <- fig %>% add_lines(x = ~Date, y = ~up , name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands",
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% add_lines(x = ~Date, y = ~dn, name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands", inherit = F,
+            showlegend = FALSE, hoverinfo = "none") 
+fig <- fig %>% add_lines(x = ~Date, y = ~mavg, name = "Mv Avg",
+            line = list(color = '#E377C2', width = 0.5),
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% layout(yaxis = list(title = "Price"))
+
+# plot volume bar chart
+fig2 <- df 
+fig2 <- fig2 %>% plot_ly(x=~Date, y=~IXIC.Volume, type='bar', name = "IXIC Volume",
+          color = ~direction, colors = c('#CCCCFF','#7F7F7F')) 
+fig2 <- fig2 %>% layout(yaxis = list(title = "Volume"))
+
+# create rangeselector buttons
+rs <- list(visible = TRUE, x = 0.5, y = -0.055,
+           xanchor = 'center', yref = 'paper',
+           font = list(size = 9),
+           buttons = list(
+             list(count=1,
+                  label='RESET',
+                  step='all'),
+             list(count=1,
+                  label='1 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=3,
+                  label='3 MO',
+                  step='month',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 MO',
+                  step='month',
+                  stepmode='backward')
+           ))
+
+# subplot with shared x axis
+fig <- subplot(fig, fig2, heights = c(0.7,0.2), nrows=2,
+             shareX = TRUE, titleY = TRUE)
+fig <- fig %>% layout(title = paste("NASDAQ Composite Index Stock Price: January 2010 - March 2023" ),
+         xaxis = list(rangeselector = rs),
+         legend = list(orientation = 'h', x = 0.5, y = 1,
+                       xanchor = 'center', yref = 'paper',
+                       font = list(size = 10),
+                       bgcolor = 'transparent'))
+
+fig
+
+
+```
+
+Over the past decade, the NASDAQ Composite Index has shown a strong upward trend, with periods of volatility and corrections along the way. One of the key drivers of this growth has been the rapid expansion of the technology industry, which has fueled investor optimism and driven up the prices of technology stocks. As a result, the NASDAQ Composite Index has become closely associated with the technology sector, and investors often view it as a barometer of the industry's health.
+
+However, inflation has also played a role in the movement of the NASDAQ Composite Index stock price. Inflation erodes the value of money, making it more expensive to purchase goods and services. This can lead to higher interest rates, which can negatively impact the stock market. Inflation concerns have been a major factor in market volatility, and recent increases in inflation have caused some investors to become cautious. The Federal Reserve has responded to these concerns by raising interest rates and scaling back its bond-buying program.
+
+Despite these challenges, the NASDAQ Composite Index has continued to rise, reflecting the underlying strength of the technology industry and the broader economy. As technology continues to transform the way we live and work, the NASDAQ Composite Index is likely to remain an important indicator of trends in the sector and a key benchmark for investors.
+
+For stock prices, a multiplicative decomposition is typically preferred because the percentage changes in stock prices tend to be more important than the absolute changes. Additionally, stock prices tend to exhibit non-constant variance, meaning that the variance of the series changes over time. A multiplicative decomposition can handle this non-constant variance more effectively than an additive decomposition.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#convert to ts data
+myts<-ts(df$IXIC.Adjusted,frequency=252,start=c(2010,1,1)) 
+orginial_plot <- autoplot(myts,xlab ="Year", ylab = "Adjusted Closing Price", main = "NASDAQ Composite Index Stock price: Jan 2010 - March 2023")
+decompose = decompose(myts, "multiplicative")
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+#adjusted decomposition
+trendadj <- myts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='trend') +ggtitle('Adjusted trend component in the multiplicative time series model')
+seasonaladj <- myts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the multiplicative time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+```
+:::
+
+When compared to the original plot, the adjusted seasonal component tends to have an upward trend, and the model is more variable than the original plot, where the plot changes over time but the trend stays the same.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(myts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for NASDAQ Composite Index Stock Jan 2010 - March 2023")
+```
+
+##### Monthly Time Lags
+
+```{r arning=FALSE}
+#montly data
+mean_data <- df %>% 
+  mutate(month = month(Date), year = year(Date)) %>% 
+  group_by(year, month) %>% 
+  summarize(mean_value = mean(IXIC.Adjusted))
+#ts of montly data
+month<-ts(mean_data$mean_value,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 12)
+
+#Lag plot for month
+ts_lags(month)
+```
+:::
+
+NASDAQ Composite Index Stock's Lag Plot From January 2010 to March 2023, there should be a strong connection between the series and the related lag, since there is a positive correlation and a 45-degree slope. This is how a process that has strong positive autocorrelation shows up in a lag plot. Such processes are not very random, because there is a strong link between one observation and the next. Another way to look at seasonality is to plot observations for a larger number of time periods, called "lags." Using the mean function, the time series data is turned into monthly data so that the series can be better understood and the plots can be more clear. If you look closely at the last graph, you can see that there are more dots on the diagonal line at 45 degrees. On the vertical axis of the second graph, the month of the variable is shown. The lines link the points in order of time. This suggest that there is strong association between an observation and a succeeding observation.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(month, color = "YlGn", title = 'Seasonality Heatmap of NASDAQ Composite Index Stock Jan 2010 - March 2023')
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(month, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot for NASDAQ Composite Index Stock Jan 2010 - March 2023")
+```
+:::
+
+The Seasonality Heatmap for the NASDAQ Composite Index Stock from January 2010 to March 2023 does not reveal any significant seasonality in the data. The heatmap displays the mean value of the time series for each month and year combination, with darker colors indicating higher values. The absence of any consistent patterns or darker colors in specific months or years indicates that there is no clear seasonal trend in the data. Similarly, the yearly line graph also does not show any discernible seasonality. Each year's data is represented by a line, and the months are plotted on the x-axis. However, the graph does display a strong upward trend in the stock price from 2010 to 2023. Overall, the lack of clear seasonality in both the heatmap and yearly line graph suggests that other factors beyond seasonality are the primary drivers of the fluctuations in the NASDAQ Composite Index.
+
+#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("NASDAQ Composite Index Stock Jan 2010 - March 2023(4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("NASDAQ Composite Index Stock Jan 2010 - March 2023 (1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("NASDAQ Composite Index Stock Jan 2010 - March 2023(3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+
+##### 5 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,61), series="5 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("NASDAQ Composite Index Stock Jan 2010 - March 2023(5 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","5 Year MA"="red"),
+                      breaks=c("Data","5 Year MA"))
+ma
+```
+:::
+
+The four plots above show the NASDAQ Composite Index stock price from January 2010 to March 2023 with different timeframes of moving averages (MA) overlaid. The moving average is a common smoothing technique used to reduce the noise in the time series data and highlight underlying trends. As the length of the MA window increases, the smoother the plot becomes and the trend is more visible. The first plot shows a 4-month moving average, the second plot shows a 1-year moving average, the third plot shows a 3-year moving average and the fourth plot shows a 5-year moving average
+
+Comparing the plots, we can see that as the length of the moving average window increases, the plot becomes smoother, and the trend becomes clearer. In the 4-month moving average plot, the stock price fluctuates significantly, making it challenging to identify the trend. However, in the 5-year moving average plot, we can observe a clear upward trend in the stock price, and it is easier to identify the long-term trend. From the moving average obtained above we can see that there is upward tend in the stock price of NASDAQ Composite Index.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+
+#ACF plots for month data
+ggAcf(month, 120)+ggtitle("ACF Plot for NASDAQ Composite Index Stock Jan 2010 - March 2023")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF plots for month data
+ggPacf(month, 120)+ggtitle("PACF Plot for NASDAQ Composite Index Stock Jan 2010 - March 2023")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+# ADF Test
+tseries::adf.test(month)
+```
+:::
+
+There is clear autocorrelation in lag in the plot of autocorrelation function, which is the acf graph for monthly data. The above lag plots and autocorrelation plots show that the series has seasonality, which means that the series doesn't stay the same over time. It was also checked with the Augmented Dickey-Fuller Test. This test tells us that the series is not stationary because the p value is greater than 0.05.
+
+#### Detrend and Differenced Time Series
+
+::: panel-tabset
+##### Linear Fitting Model
+
+```{r warning=FALSE}
+fit = lm(myts~time(myts), na.action=NULL) 
+summary(fit) 
+```
+
+##### ACF Plot
+
+```{r warning=FALSE}
+
+# plot ACFs
+plot1 <- ggAcf(myts, 48, main="Original Data: NASDAQ Composite Index Stock Price")
+plot2 <- ggAcf(resid(fit), 48, main="Detrended data") 
+plot3 <- ggAcf(diff(myts), 48, main="First differenced data")
+grid.arrange(plot1, plot2, plot3,nrow=3)
+```
+:::
+
+The estimated slope coefficient β1, 1.323e+03. With a standard error of 9.197e+00, yielding a significant estimated increase of stock price is very less yearly. Equation of the fit for stationary process: $$\hat{y}_{t} = x_{t}+(2.658e+06)-(1.323e+03)t$$ From the above graph, we can see that the original plot has a high correlation, while the detrended plot has a lower correlation but still a high correlation. But when the first order difference is used, the high correlation goes away, but there is still a correlation between the time of year and the data.
+
+As depicted in the above figure, the series is now stationary and ready for future study.

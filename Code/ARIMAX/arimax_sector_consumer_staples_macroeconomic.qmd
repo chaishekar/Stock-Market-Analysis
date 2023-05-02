@@ -1,0 +1,478 @@
+---
+title: "ARIMAX/SARIMAX for Consumer Staples Sector Fund and macroeconomic factors"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+library(reshape2)
+require(gridExtra)
+library(magrittr)
+library(vars)
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+#import the data
+dj_data <- read.csv("DATA/CLEANED DATA/dji_raw_data.csv")
+nasdaq_data <- read.csv("DATA/CLEANED DATA/nasdaq_raw_data.csv")
+sp500_data <- read.csv("DATA/CLEANED DATA/sp500_raw_data.csv")
+XLP_data <- read.csv("DATA/CLEANED DATA/xlp_raw_data.csv")
+xlb_data <- read.csv("DATA/CLEANED DATA/xlb_raw_data.csv")
+xlc_data <- read.csv("DATA/CLEANED DATA/xlc_raw_data.csv")
+xle_data <- read.csv("DATA/CLEANED DATA/xle_raw_data.csv")
+xlf_data <- read.csv("DATA/CLEANED DATA/xlf_raw_data.csv")
+xli_data <- read.csv("DATA/CLEANED DATA/xli_raw_data.csv")
+xlp_data <- read.csv("DATA/CLEANED DATA/xlp_raw_data.csv")
+xlk_data <- read.csv("DATA/CLEANED DATA/xlk_raw_data.csv")
+xlre_data <- read.csv("DATA/CLEANED DATA/xlre_raw_data.csv")
+xlu_data <- read.csv("DATA/CLEANED DATA/xlu_raw_data.csv")
+xlv_data <- read.csv("DATA/CLEANED DATA/xlv_raw_data.csv")
+xly_data <- read.csv("DATA/CLEANED DATA/xly_raw_data.csv")
+gdp_data <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+inflation_data <- read.csv("DATA/CLEANED DATA/inflation_yearly_data.csv")
+unemployment_data <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#clean data
+dj_data_clean <-dj_data %>% dplyr::select(Date, DJI.Adjusted)
+nasdaq_data_clean <- nasdaq_data %>%dplyr::select(Date, IXIC.Adjusted)
+sp500_data_clean <- sp500_data%>%dplyr::select( Date, GSPC.Adjusted)
+xlb_data_clean <- xlb_data%>%dplyr::select(Date,XLB.Adjusted )
+xlc_data_clean <- xlc_data%>%dplyr::select(Date, XLC.Adjusted)
+xle_data_clean <- xle_data%>%dplyr::select( Date, XLE.Adjusted)
+xlf_data_clean <- xlf_data%>%dplyr::select( Date, XLF.Adjusted)
+xli_data_clean <- xli_data%>%dplyr::select( Date, XLI.Adjusted)
+xlp_data_clean <- xlp_data%>%dplyr::select( Date, XLP.Adjusted)
+xlk_data_clean <- xlk_data%>%dplyr::select( Date, XLK.Adjusted)
+xlre_data_clean <- xlre_data%>%dplyr::select( Date, XLRE.Adjusted)
+xlu_data_clean <- xlu_data%>%dplyr::select( Date, XLU.Adjusted)
+xlv_data_clean <- xlv_data%>%dplyr::select( Date, XLV.Adjusted)
+xly_data_clean <- xly_data%>%dplyr::select( Date, XLY.Adjusted)
+
+# changing the data to quarterly based data
+#dj_data_clean
+dj_data_clean$Date<-as.Date(dj_data_clean$Date,"%m/%d/%Y")
+dj_data_clean <- dj_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+dj_data_clean = dj_data_clean[,!(names(dj_data_clean) %in% drop)]
+#nasdaq_data_clean
+nasdaq_data_clean$Date<-as.Date(nasdaq_data_clean$Date,"%m/%d/%Y")
+nasdaq_data_clean <- nasdaq_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+nasdaq_data_clean = nasdaq_data_clean[,!(names(nasdaq_data_clean) %in% drop)]
+#sp500_data_clean
+sp500_data_clean$Date<-as.Date(sp500_data_clean$Date,"%m/%d/%Y")
+sp500_data_clean <- sp500_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+sp500_data_clean = sp500_data_clean[,!(names(sp500_data_clean) %in% drop)]
+#xlb_data_clean
+xlb_data_clean$Date<-as.Date(xlb_data_clean$Date,"%m/%d/%Y")
+xlb_data_clean <- xlb_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlb_data_clean = xlb_data_clean[,!(names(xlb_data_clean) %in% drop)]
+#xlc_data_clean
+xlc_data_clean$Date<-as.Date(xlc_data_clean$Date,"%m/%d/%Y")
+xlc_data_clean <- xlc_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlc_data_clean = xlc_data_clean[,!(names(xlc_data_clean) %in% drop)]
+#xle_data_clean
+xle_data_clean$Date<-as.Date(xle_data_clean$Date,"%m/%d/%Y")
+xle_data_clean <- xle_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xle_data_clean = xle_data_clean[,!(names(xle_data_clean) %in% drop)]
+#xlf_data_clean 
+xlf_data_clean$Date<-as.Date(xlf_data_clean$Date,"%m/%d/%Y")
+xlf_data_clean <- xlf_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlf_data_clean = xlf_data_clean[,!(names(xlf_data_clean) %in% drop)]
+#xli_data_clean 
+xli_data_clean$Date<-as.Date(xli_data_clean$Date,"%m/%d/%Y")
+xli_data_clean <- xli_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xli_data_clean = xli_data_clean[,!(names(xli_data_clean) %in% drop)]
+#xlp_data_clean 
+xlp_data_clean$Date<-as.Date(xlp_data_clean$Date,"%m/%d/%Y")
+xlp_data_clean <- xlp_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlp_data_clean = xlp_data_clean[,!(names(xlp_data_clean) %in% drop)]
+#xlk_data_clean
+xlk_data_clean$Date<-as.Date(xlk_data_clean$Date,"%m/%d/%Y")
+xlk_data_clean <- xlk_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlk_data_clean = xlk_data_clean[,!(names(xlk_data_clean) %in% drop)]
+#xlre_data_clean 
+xlre_data_clean$Date<-as.Date(xlre_data_clean$Date,"%m/%d/%Y")
+xlre_data_clean <- xlre_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlre_data_clean = xlre_data_clean[,!(names(xlre_data_clean) %in% drop)]
+#xlu_data_clean 
+xlu_data_clean$Date<-as.Date(xlu_data_clean$Date,"%m/%d/%Y")
+xlu_data_clean <- xlu_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlu_data_clean = xlu_data_clean[,!(names(xlu_data_clean) %in% drop)]
+#xlv_data_clean 
+xlv_data_clean$Date<-as.Date(xlv_data_clean$Date,"%m/%d/%Y")
+xlv_data_clean <- xlv_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlv_data_clean = xlv_data_clean[,!(names(xlv_data_clean) %in% drop)]
+#xly_data_clean 
+xly_data_clean$Date<-as.Date(xly_data_clean$Date,"%m/%d/%Y")
+xly_data_clean <- xly_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xly_data_clean = xly_data_clean[,!(names(xly_data_clean) %in% drop)]
+#interest_data 
+interest_data$Date<-as.Date(interest_data$Date,"%m/%d/%Y")
+interest_data <- interest_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(interest_data)[2] ="interest"
+drop <- c("Q")
+interest_data = interest_data[,!(names(interest_data) %in% drop)]
+#inflation_data
+inflation_data$Date<-as.Date(inflation_data$Date,"%m/%d/%Y")
+inflation_data <- inflation_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(inflation_data)[2] ="inflation"
+drop <- c("Q")
+inflation_data = inflation_data[,!(names(inflation_data) %in% drop)]
+#unemployment_data 
+unemployment_data$Date<-as.Date(unemployment_data$Date,"%m/%d/%Y")
+unemployment_data <- unemployment_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(unemployment_data)[2] ="unemployment"
+drop <- c("Q")
+unemployment_data = unemployment_data[,!(names(unemployment_data) %in% drop)]
+#gdp_data
+gdp_data$Date <- as.Date(gdp_data$DATE , "%m/%d/%Y")
+#drop DATE column from gdp_data
+gdp_data <- gdp_data %>%dplyr::select( Date, value)
+colnames(gdp_data)[2] ="gdp"
+
+drop <- c("Q")
+df = unemployment_data[,!(names(unemployment_data) %in% drop)]
+
+# final merged data
+df_index_factor <- list(dj_data_clean,nasdaq_data_clean, sp500_data_clean,gdp_data, interest_data, inflation_data, unemployment_data)      
+index_factor_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_index_factor) 
+index_factor_data <- na.omit(index_factor_data)
+
+df_index_sector <- list(dj_data_clean, nasdaq_data_clean, sp500_data_clean, xlb_data_clean, xlc_data_clean, xle_data_clean, xlf_data_clean, xli_data_clean, xlp_data_clean, xlk_data_clean, xlre_data_clean, xlu_data_clean, xlv_data_clean, xly_data_clean)
+index_sector_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_index_sector) 
+index_sector_data <- na.omit(index_sector_data)
+
+df_sector_factor <- list(xlb_data_clean, xlc_data_clean, xle_data_clean, xlf_data_clean, xli_data_clean, xlp_data_clean, xlk_data_clean, xlre_data_clean, xlu_data_clean, xlv_data_clean, xly_data_clean,gdp_data, interest_data, inflation_data, unemployment_data )
+sector_factor_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_sector_factor) 
+sector_factor_data <- na.omit(sector_factor_data)
+
+numeric_vars_sector_factor_data <- c( "XLB.Adjusted", "XLC.Adjusted", "XLE.Adjusted","XLF.Adjusted","XLI.Adjusted","XLP.Adjusted","XLK.Adjusted","XLRE.Adjusted","XLU.Adjusted","XLV.Adjusted","XLY.Adjusted", "gdp", "interest", "inflation", "unemployment")
+numeric_sector_factor_data <- sector_factor_data[, numeric_vars_sector_factor_data]
+normalized_sector_factor_data_numeric <- scale(numeric_sector_factor_data)
+normalized_sector_factor_data <- ts(normalized_sector_factor_data_numeric, start = c(2018, 7), frequency = 4)
+```
+
+
+Endogenous variable: Consumer Staples Sector Fund
+Exogenous variables: Macroeconomic indicators such as GDP, inflation rate, unemployment rate and interest rates
+
+Before proceeding with model selection, it can be useful to examine the feature variables and select the appropriate ones. This can be done by creating cross-correlation function plots, which can serve as a verification of the correlation heatmap for the variables.
+
+##### CCF Plot for Consumer Staples Sector Fund and Exogenous Variables
+
+::: panel-tabset
+### GDP
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_sector_factor_data[, c("XLP.Adjusted")], normalized_sector_factor_data[, c("gdp")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for Consumer Staples Sector Fund and GDP Growth Rate ",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+### Interest Rate
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_sector_factor_data[, c("XLP.Adjusted")], normalized_sector_factor_data[, c("interest")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for Consumer Staples Sector Fund and Interest Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### Inflation Rate
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_sector_factor_data[, c("XLP.Adjusted")], normalized_sector_factor_data[, c("inflation")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for Consumer Staples Sector Fund and Inflation Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### Unemployment Rate
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_sector_factor_data[, c("XLP.Adjusted")], normalized_sector_factor_data[, c("unemployment")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for Consumer Staples Sector Fund and Unemployment Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+:::
+
+The cross-correlation feature plots reaffirm the findings from the heatmap analysis, indicating that inflation rate exhibit stronger correlations with the index compared to GDP, interest rate and unemployment rate. The cross-correlation plots for GDP, unemployment and interest rates show weaker and more scattered patterns, with strikes between the blue lines indicating lower correlation coefficients. This suggests that inflation rate are more suitable feature variables for the ARIMAX model when predicting Consumer Staples Sector Fund movements.
+
+Final Exogenous variables: Macroeconomic indicators: Inflation rate
+
+##### Endogenous and Exogenous Variables Plot
+
+```{r}
+final_XLP_factor_data <- sector_factor_data %>%dplyr::select( Date,XLP.Adjusted, inflation)
+numeric_vars_XLP_factor_data <- c("XLP.Adjusted", "inflation")
+numeric_XLP_factor_data <- final_XLP_factor_data[, numeric_vars_XLP_factor_data]
+normalized_XLP_factor_data_numeric <- scale(numeric_XLP_factor_data)
+normalized_XLP_factor_data_numeric_df <- data.frame(normalized_XLP_factor_data_numeric)
+normalized_XLP_factor_data_ts <- ts(normalized_XLP_factor_data_numeric, start = c(2018, 7), frequency = 4)
+
+autoplot(normalized_XLP_factor_data_ts, facets=TRUE) +
+  xlab("Year") + ylab("") +
+  ggtitle("Consumer Staples Sector Fund Stock Price, Inflation Rate and Unemployment Rate in USA 2018-2023")
+```
+##### Check the stationarity
+
+Before proceeding with further analysis, it's important to check the stationarity of the time series data. If the series is not stationary, it needs to be differentiated before performing a ARIMAX model. The stationarity of a multivariate time series data can be checked using the Phillips-Perron test, which is specifically designed for multivariate data. By performing the Phillips-Perron test on the multivariate time series data, we can determine if the data is stationary or if it requires differencing to make it suitable for ARIMAX modeling.
+
+```{r}
+# Convert your multivariate time series data to a matrix
+final_XLP_factor_data_ts_multivariate <- as.matrix(normalized_XLP_factor_data_ts)
+
+# Check for stationarity using Phillips-Perron test
+phillips_perron_test <- ur.pp(final_XLP_factor_data_ts_multivariate)  
+summary(phillips_perron_test)
+```
+The Phillips-Perron unit root test output suggests that the data is stationary. The test regression includes an intercept term and tests whether the coefficient on the lagged value is significantly different from one. The estimated coefficients indicate that the intercept is not significant (p-value \> 0.05), while the coefficient on the lagged value is highly significant (p-value \< 4.82e-13), suggesting that the data is stationary.
+
+Additionally, the "Z-alpha" value is the test statistic, which is compared to critical values of the standard normal distribution to determine significance. In this case, the test statistic is -5.2349, indicating strong evidence against the null hypothesis of a unit root. The "Z-tau-mu" value is an auxiliary test statistic used to correct for autocorrelation in the residuals, and it is close to zero, suggesting that there is no evidence of residual autocorrelation.
+
+##### Fitting a ARIMAX model
+
+Fitting an ARIMAX model will be a useful approach to modeling and predicting time series data when external factors are believed to have an impact on the response variable. In this case, we will be using an ARIMAX model to predict the Consumer Staples Sector Fund Stock Price, taking into account the effects of inflation on the sector. By including these exogenous variables in our model, we can improve the accuracy of our predictions and gain a better understanding of the underlying dynamics of the time series.
+
+::: panel-tabset
+### Auto ARIMA
+
+
+```{r}
+xreg <- cbind(Inflation = normalized_XLP_factor_data_ts[, "inflation"])
+
+fit <- auto.arima(normalized_XLP_factor_data_ts[, "XLP.Adjusted"], xreg = xreg)
+summary(fit)
+```
+
+### Residuals
+
+```{r}
+checkresiduals(fit)
+```
+:::
+
+The auto.arima function reveals that the best-fit model is (0,1,0). Analysis of the residuals plot indicates that the fluctuates a lot and lies between -0.6 to 0.6. The ACF plot of the residuals shows significant lags, indicating that the model is performing well. The qq-plot also suggests normality in the residuals. The p-value greater than 0.05 actually suggests that there is no evidence of significant autocorrelation in the residuals, which means that the model is performing well in terms of capturing the temporal patterns in the data.
+
+##### Fitting the model manually
+
+::: panel-tabset
+### Linear Model
+
+```{r}
+normalized_XLP_factor_data_numeric_df$XLP.Adjusted<-ts(normalized_XLP_factor_data_numeric_df$XLP.Adjusted,star=decimal_date(as.Date("2018-07-01",format = "%Y-%m-%d")),frequency = 4)
+normalized_XLP_factor_data_numeric_df$inflation<-ts(normalized_XLP_factor_data_numeric_df$inflation,star=decimal_date(as.Date("2018-07-01",format = "%Y-%m-%d")),frequency = 4)
+
+
+############# First fit the linear model##########
+fit.reg <- lm(XLP.Adjusted ~ inflation, data=normalized_XLP_factor_data_numeric_df)
+summary(fit.reg)
+```
+
+### ACF of Residuals
+
+```{r}
+res.fit<-ts(residuals(fit.reg),star=decimal_date(as.Date("2018-01-01",format = "%Y-%m-%d")),frequency = 4)
+############## Then look at the residuals ############
+acf(res.fit)
+
+```
+
+### ACF of Residuals
+
+```{r}
+Pacf(res.fit)
+```
+
+### Differentiated Residual
+
+```{r}
+res.fit %>% diff() %>% ggtsdisplay()
+
+```
+:::
+
+The output displays the results of a linear regression model using two predictor variables, inflation and unemployment, to explain the variation in the response variable, XLP.Adjusted The coefficients of inflation have p-values of less than 0.05, indicating that both variables significantly impact XLP.Adjusted The R-squared value of approximately 64% suggests that the model explains a moderate amount of the variation in the response variable. Examination of the ACF plot of residuals reveals some autocorrelation, and therefore, the series is differentiated to achieve stationarity. By analyzing the differentiated ACF and PACF plots, the parameters if the ARIMAX modle are that p=0, q=0, and d=1.
+
+As both the model fitted manually and the auto.arima parameters are the same, i.e. p = 0, q = 0 and d = 1. We proceed with fitting the model for the parameters. 
+
+##### Model Fitting
+
+::: panel-tabset
+
+### Model Plot 
+
+```{r}
+set.seed(1234)
+
+model_output <- capture.output(sarima(res.fit, 0,1,0)) 
+```
+### Model 
+
+```{r}
+cat(model_output[9:38], model_output[length(model_output)], sep = "\n")
+```
+:::
+
+The best model identified is ARIMA(0,1,0). By analyzing the standardized residuals plot, it can be observed that the mean is close to 0. Deviations from these values could indicate poor model fit. However, in this case, the model seems to be well-fitted. The ACF plot of residuals shows very few significant lags, which is a positive sign for the model. The qq-plot also suggests normality in the residuals. Additionally, the p-values for the Ljung-Box test are greater than 0.05, indicating that the residuals are independent, which is favorable for the model's accuracy.
+
+##### Forecast
+
+::: panel-tabset
+### Forecast for  Consumer Staples Sector Fund with feature variable
+
+```{r}
+#fiting an ARIMA model to the Inflation variable
+inflation_fit<-auto.arima(normalized_XLP_factor_data_numeric_df$inflation) 
+finflation<-forecast(inflation_fit)
+
+
+# best model fit for forcasting
+xreg <- cbind(Inflation = normalized_XLP_factor_data_ts[, "inflation"])
+
+fit <- Arima(normalized_XLP_factor_data_ts[, "XLP.Adjusted"],order=c(0,1,0),xreg=xreg)
+
+# Forcast the stock price using feature variables
+fxreg <- cbind(Inflation = finflation$mean)
+fcast <- forecast(fit, xreg=fxreg) 
+autoplot(fcast) + xlab("Year") +
+  ylab("Normalised XLP.Adjusted")
+```
+### ARIMA Model for Inflation
+
+```{r}
+#fiting an ARIMA model to the Inflation variable
+inflation_fit<-auto.arima(normalized_XLP_factor_data_numeric_df$inflation) 
+finflation<-forecast(inflation_fit)
+summary(inflation_fit)
+```
+### ARIMA Model for Consumer Staples Sector Fund with feature variable
+
+```{r}
+# best model fit for forcasting
+xreg <- cbind(Inflation = normalized_XLP_factor_data_ts[, "inflation"])
+
+fit <- Arima(normalized_XLP_factor_data_ts[, "XLP.Adjusted"],order=c(0,1,0),xreg=xreg)
+summary(fit)
+```
+
+The ARIMAX model may have incorporated exogenous variables such as macroeconomic factors, which could indicate the potential impact of external factors on the forecasted values. The findings suggest that inflation rates significantly impact the Consumer Staples Sector Fund stock price, underscoring the importance of including macroeconomic factors in stock market forecasting. This is further supported by the comparison of RMSE, MAE, AIC and BIC values for forecasts with and without the feature variable. It is found that including the feature variable leads to a lower values, indicating that the feature variable makes a significant impact and should be considered in stock market forecasting.
+
+

@@ -1,0 +1,343 @@
+---
+title: "ARIMAX/SARIMAX Model for US stock indices and macroeconomic factors as exogenous variables"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+In this case, we are interested in predicting the performance of three stock indices, such as the S&P 500, NASDAQ, and Dow Jones Industrial Average. We will use macroeconomic factors as exogenous variables to improve the accuracy of our predictions. Some examples of macroeconomic factors we might consider include GDP growth, inflation rates, and interest rates.
+
+Including these exogenous variables can help us to better understand how the stock market might be impacted by changes in the broader economy. For example, if GDP growth is predicted to increase, we might expect to see a corresponding increase in the stock market indices as well.
+
+According to the findings, the endogenous and exogenous variables in the time series data are not interdependent, then the ARIMAX model can be a good choice for predicting the stock market indices. If there is seasonality in the data, then the SARIMAX model can be used to account for this seasonal variation. If there is no seasonality, then the simpler ARIMA model can be used instead of SARIMAX.
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+library(reshape2)
+require(gridExtra)
+library(magrittr)
+library(vars)
+options(dplyr.summarise.inform = FALSE)
+```
+
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+#import the data
+dj_data <- read.csv("DATA/CLEANED DATA/dji_raw_data.csv")
+nasdaq_data <- read.csv("DATA/CLEANED DATA/nasdaq_raw_data.csv")
+sp500_data <- read.csv("DATA/CLEANED DATA/sp500_raw_data.csv")
+xlb_data <- read.csv("DATA/CLEANED DATA/xlb_raw_data.csv")
+xlc_data <- read.csv("DATA/CLEANED DATA/xlc_raw_data.csv")
+xle_data <- read.csv("DATA/CLEANED DATA/xle_raw_data.csv")
+xlf_data <- read.csv("DATA/CLEANED DATA/xlf_raw_data.csv")
+xli_data <- read.csv("DATA/CLEANED DATA/xli_raw_data.csv")
+xlp_data <- read.csv("DATA/CLEANED DATA/xlp_raw_data.csv")
+xlk_data <- read.csv("DATA/CLEANED DATA/xlk_raw_data.csv")
+xlre_data <- read.csv("DATA/CLEANED DATA/xlre_raw_data.csv")
+xlu_data <- read.csv("DATA/CLEANED DATA/xlu_raw_data.csv")
+xlv_data <- read.csv("DATA/CLEANED DATA/xlv_raw_data.csv")
+xly_data <- read.csv("DATA/CLEANED DATA/xly_raw_data.csv")
+gdp_data <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+inflation_data <- read.csv("DATA/CLEANED DATA/inflation_yearly_data.csv")
+unemployment_data <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#clean data
+dj_data_clean <-dj_data %>% dplyr::select(Date, DJI.Adjusted)
+nasdaq_data_clean <- nasdaq_data %>%dplyr::select(Date, IXIC.Adjusted)
+sp500_data_clean <- sp500_data%>%dplyr::select( Date, GSPC.Adjusted)
+xlb_data_clean <- xlb_data%>%dplyr::select(Date,XLB.Adjusted )
+xlc_data_clean <- xlc_data%>%dplyr::select(Date, XLC.Adjusted)
+xle_data_clean <- xle_data%>%dplyr::select( Date, XLE.Adjusted)
+xlf_data_clean <- xlf_data%>%dplyr::select( Date, XLF.Adjusted)
+xli_data_clean <- xli_data%>%dplyr::select( Date, XLI.Adjusted)
+xlp_data_clean <- xlp_data%>%dplyr::select( Date, XLP.Adjusted)
+xlk_data_clean <- xlk_data%>%dplyr::select( Date, XLK.Adjusted)
+xlre_data_clean <- xlre_data%>%dplyr::select( Date, XLRE.Adjusted)
+xlu_data_clean <- xlu_data%>%dplyr::select( Date, XLU.Adjusted)
+xlv_data_clean <- xlv_data%>%dplyr::select( Date, XLV.Adjusted)
+xly_data_clean <- xly_data%>%dplyr::select( Date, XLY.Adjusted)
+
+# changing the data to quarterly based data
+#dj_data_clean
+dj_data_clean$Date<-as.Date(dj_data_clean$Date,"%m/%d/%Y")
+dj_data_clean <- dj_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+dj_data_clean = dj_data_clean[,!(names(dj_data_clean) %in% drop)]
+#nasdaq_data_clean
+nasdaq_data_clean$Date<-as.Date(nasdaq_data_clean$Date,"%m/%d/%Y")
+nasdaq_data_clean <- nasdaq_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+nasdaq_data_clean = nasdaq_data_clean[,!(names(nasdaq_data_clean) %in% drop)]
+#sp500_data_clean
+sp500_data_clean$Date<-as.Date(sp500_data_clean$Date,"%m/%d/%Y")
+sp500_data_clean <- sp500_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+sp500_data_clean = sp500_data_clean[,!(names(sp500_data_clean) %in% drop)]
+#xlb_data_clean
+xlb_data_clean$Date<-as.Date(xlb_data_clean$Date,"%m/%d/%Y")
+xlb_data_clean <- xlb_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlb_data_clean = xlb_data_clean[,!(names(xlb_data_clean) %in% drop)]
+#xlc_data_clean
+xlc_data_clean$Date<-as.Date(xlc_data_clean$Date,"%m/%d/%Y")
+xlc_data_clean <- xlc_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlc_data_clean = xlc_data_clean[,!(names(xlc_data_clean) %in% drop)]
+#xle_data_clean
+xle_data_clean$Date<-as.Date(xle_data_clean$Date,"%m/%d/%Y")
+xle_data_clean <- xle_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xle_data_clean = xle_data_clean[,!(names(xle_data_clean) %in% drop)]
+#xlf_data_clean 
+xlf_data_clean$Date<-as.Date(xlf_data_clean$Date,"%m/%d/%Y")
+xlf_data_clean <- xlf_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlf_data_clean = xlf_data_clean[,!(names(xlf_data_clean) %in% drop)]
+#xli_data_clean 
+xli_data_clean$Date<-as.Date(xli_data_clean$Date,"%m/%d/%Y")
+xli_data_clean <- xli_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xli_data_clean = xli_data_clean[,!(names(xli_data_clean) %in% drop)]
+#xlp_data_clean 
+xlp_data_clean$Date<-as.Date(xlp_data_clean$Date,"%m/%d/%Y")
+xlp_data_clean <- xlp_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlp_data_clean = xlp_data_clean[,!(names(xlp_data_clean) %in% drop)]
+#xlk_data_clean
+xlk_data_clean$Date<-as.Date(xlk_data_clean$Date,"%m/%d/%Y")
+xlk_data_clean <- xlk_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlk_data_clean = xlk_data_clean[,!(names(xlk_data_clean) %in% drop)]
+#xlre_data_clean 
+xlre_data_clean$Date<-as.Date(xlre_data_clean$Date,"%m/%d/%Y")
+xlre_data_clean <- xlre_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlre_data_clean = xlre_data_clean[,!(names(xlre_data_clean) %in% drop)]
+#xlu_data_clean 
+xlu_data_clean$Date<-as.Date(xlu_data_clean$Date,"%m/%d/%Y")
+xlu_data_clean <- xlu_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlu_data_clean = xlu_data_clean[,!(names(xlu_data_clean) %in% drop)]
+#xlv_data_clean 
+xlv_data_clean$Date<-as.Date(xlv_data_clean$Date,"%m/%d/%Y")
+xlv_data_clean <- xlv_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xlv_data_clean = xlv_data_clean[,!(names(xlv_data_clean) %in% drop)]
+#xly_data_clean 
+xly_data_clean$Date<-as.Date(xly_data_clean$Date,"%m/%d/%Y")
+xly_data_clean <- xly_data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+xly_data_clean = xly_data_clean[,!(names(xly_data_clean) %in% drop)]
+#interest_data 
+interest_data$Date<-as.Date(interest_data$Date,"%m/%d/%Y")
+interest_data <- interest_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(interest_data)[2] ="interest"
+drop <- c("Q")
+interest_data = interest_data[,!(names(interest_data) %in% drop)]
+#inflation_data
+inflation_data$Date<-as.Date(inflation_data$Date,"%m/%d/%Y")
+inflation_data <- inflation_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(inflation_data)[2] ="inflation"
+drop <- c("Q")
+inflation_data = inflation_data[,!(names(inflation_data) %in% drop)]
+#unemployment_data 
+unemployment_data$Date<-as.Date(unemployment_data$Date,"%m/%d/%Y")
+unemployment_data <- unemployment_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(unemployment_data)[2] ="unemployment"
+drop <- c("Q")
+unemployment_data = unemployment_data[,!(names(unemployment_data) %in% drop)]
+#gdp_data
+gdp_data$Date <- as.Date(gdp_data$DATE , "%m/%d/%Y")
+#drop DATE column from gdp_data
+gdp_data <- gdp_data %>%dplyr::select( Date, value)
+colnames(gdp_data)[2] ="gdp"
+
+drop <- c("Q")
+df = unemployment_data[,!(names(unemployment_data) %in% drop)]
+
+# final merged data
+df_index_factor <- list(dj_data_clean,nasdaq_data_clean, sp500_data_clean,gdp_data, interest_data, inflation_data, unemployment_data)      
+index_factor_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_index_factor) 
+index_factor_data <- na.omit(index_factor_data)
+
+df_index_sector <- list(dj_data_clean, nasdaq_data_clean, sp500_data_clean, xlb_data_clean, xlc_data_clean, xle_data_clean, xlf_data_clean, xli_data_clean, xlp_data_clean, xlk_data_clean, xlre_data_clean, xlu_data_clean, xlv_data_clean, xly_data_clean)
+index_sector_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_index_sector) 
+index_sector_data <- na.omit(index_sector_data)
+
+df_sector_factor <- list(xlb_data_clean, xlc_data_clean, xle_data_clean, xlf_data_clean, xli_data_clean, xlp_data_clean, xlk_data_clean, xlre_data_clean, xlu_data_clean, xlv_data_clean, xly_data_clean,gdp_data, interest_data, inflation_data, unemployment_data )
+sector_factor_data <- Reduce(function(x, y) merge(x, y, all=TRUE), df_sector_factor) 
+sector_factor_data <- na.omit(sector_factor_data)
+
+```
+
+Let's examine the relationship between endogenous and exogenous variables before proceeding with the ARIMAX/SARIMAX model. 
+
+::: panel-tabset
+### Plot
+
+```{r}
+ts_plot(index_factor_data,
+        title = "Stock Prices and Macroeconomic Variables",
+        Ytitle = "Values",
+        Xtitle = "Year")
+```
+
+### Normalized Plot
+
+```{r}
+numeric_vars_index_factor_data <- c("DJI.Adjusted", "IXIC.Adjusted", "GSPC.Adjusted", "gdp", "interest", "inflation", "unemployment")
+numeric_index_factor_data <- index_factor_data[, numeric_vars_index_factor_data]
+normalized_index_factor_data_numeric <- scale(numeric_index_factor_data)
+normalized_index_factor_data <- ts(normalized_index_factor_data_numeric, start = c(2010, 1), frequency = 4)
+ts_plot(normalized_index_factor_data,
+        title = "Normalized Time Series Data for Stock Prices and Macroeconomic Variables",
+        Ytitle = "Normalized Values",
+        Xtitle = "Year")
+```
+:::
+
+The Stock Prices and Macroeconomic Variables plot, displays the time series data of various stock prices and macroeconomic variables from 2010 to 2022. Since the variables in the time series data have different scales or units, it can make the plot difficult to interpret, as the differences between variables may be obscured by the varying magnitudes. Normalizing the data by scaling it to a common scale, such as z-scores or percentage changes, can help to eliminate this issue and provide a clearer view of the relationships and patterns in the data.
+
+The Normalized Time Series Data for Stock Prices and Macroeconomic Variables plot, shows the same variables as the first plot, but the data has been normalized. Normalization is the process of scaling data to a common range, usually between 0 and 1, to eliminate the impact of different scales or units of measurement. In this case, the data has been scaled using the scale() function in R, which standardizes the variables to have a mean of 0 and a standard deviation of 1.
+
+Normalizing the time series data is beneficial for several reasons. First, it helps to remove any bias or distortion that may be introduced by variables with different units or magnitudes, allowing for a fair comparison between variables. Second, normalizing the data can help to stabilize the VAR model estimation, as variables with large values or extreme fluctuations may disproportionately influence the results. Lastly, normalizing the data can also improve the interpretability of the model coefficients, as the coefficients will be in the same scale and can be directly compared to assess their relative importance.
+
+##### Cross-Correlation for the Variables and Selection of Feature Variables
+
+Cross-correlation is a statistical technique used to measure the relationship between two or more variables in a time series. In the context of ARIMAX modeling, cross-correlation is often used for feature selection. For selecting feature variables in our analysis, we will first examine the correlation through a heatmap among all the variables, and then analyze the autocorrelation function (ACF) plots between the response variable and the exogenous variables.
+
+##### Correlation Heatmap
+
+```{r}
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+}
+cormat <- round(cor(normalized_index_factor_data_numeric),2)
+
+upper_tri <- get_upper_tri(cormat)
+
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+
+```
+
+The heatmap reveal important insights into the relationships between the stock market indices and various economic indicators. The strong positive correlations between the stock market indices and inflation, along with the negative correlations with unemployment rate, suggest that these variables may play a significant role in influencing stock market movements. In contrast, the weaker correlations between the stock market indices and GDP and interest rates indicate that these variables may have less impact on stock market fluctuations. These findings provide valuable guidance for selecting relevant variables in the VAR model to better understand and forecast stock market dynamics.
+
+[Click to view ARIMAX/SARIMAX Model for Dow Jones index and macroeconomic factors as exogenous variables](arimax_dow_jones_macroeconomic.html)
+
+[Click to view ARIMAX/SARIMAX Model for NASDAQ Composite index and macroeconomic factors as exogenous variables](arimax_nasdaq_macroeconomic.html)
+
+[Click to view ARIMAX/SARIMAX Model for S&P 500 index and macroeconomic factors as exogenous variables](arimax_sp500_macroeconomic.html)

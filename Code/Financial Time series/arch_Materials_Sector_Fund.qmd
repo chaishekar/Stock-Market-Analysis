@@ -1,0 +1,466 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+    
+execute: 
+  message: false
+  warning: false
+---
+
+#### Impact of Macroeconomic Factors on Dow Inc. Stock Price
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+library(reshape2)
+require(gridExtra)
+library(magrittr)
+library(vars)
+library(FinTS)
+library(fGarch)
+options(dplyr.summarise.inform = FALSE)
+```
+
+One of the best companies in the material sector is Dow Inc. (DOW), a multinational chemical corporation that produces a wide range of products including plastics, chemicals, and agricultural products. As of 2021, Dow Inc. is ranked as one of the largest chemical producers in the world, with operations in over 160 countries.
+
+By using an ARIMAX+ARCH/GARCH model to analyze the stock price behavior of Dow, we can gain insights into how macroeconomic factors impact the company's performance. For example, an increase in GDP growth rate or a decrease in unemployment rate may lead to increased consumer spending and a rise in Dow's stock price. Conversely, an increase in inflation or interest rates may lead to a decrease in consumer spending and a decline in Dow's stock price.
+
+#### Time series Plot
+
+::: panel-tabset
+### Dow Inc.
+
+```{r warning=FALSE}
+# get data
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+
+data.info = getSymbols("DOW",src='yahoo', from = '2020-01-01',to = "2023-03-01",auto.assign = FALSE)
+data = getSymbols("DOW",src='yahoo', from = '2020-01-01',to = "2023-03-01")
+df <- data.frame(Date=index(DOW),coredata(DOW))
+
+# create Bollinger Bands
+bbands <- BBands(DOW[,c("DOW.High","DOW.Low","DOW.Close")])
+
+# join and subset data
+df <- subset(cbind(df, data.frame(bbands[,1:3])), Date >= "2020-01-01")
+
+
+# colors column for increasing and decreasing
+for (i in 1:length(df[,1])) {
+  if (df$DOW.Close[i] >= df$DOW.Open[i]) {
+      df$direction[i] = 'Increasing'
+  } else {
+      df$direction[i] = 'Decreasing'
+  }
+}
+
+i <- list(line = list(color = '#DC7633'))
+d <- list(line = list(color = '#7F7F7F'))
+
+# plot candlestick chart
+
+fig <- df %>% plot_ly(x = ~Date, type="candlestick",
+          open = ~DOW.Open, close = ~DOW.Close,
+          high = ~DOW.High, low = ~DOW.Low, name = "DOW",
+          increasing = i, decreasing = d) 
+fig <- fig %>% add_lines(x = ~Date, y = ~up , name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands",
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% add_lines(x = ~Date, y = ~dn, name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands", inherit = F,
+            showlegend = FALSE, hoverinfo = "none") 
+fig <- fig %>% add_lines(x = ~Date, y = ~mavg, name = "Mv Avg",
+            line = list(color = '#C052B3', width = 0.5),
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% layout(yaxis = list(title = "Price"))
+
+# plot volume bar chart
+fig2 <- df 
+fig2 <- fig2 %>% plot_ly(x=~Date, y=~DOW.Volume, type='bar', name = "DOW Volume",
+          color = ~direction, colors = c('#DC7633','#7F7F7F')) 
+fig2 <- fig2 %>% layout(yaxis = list(title = "Volume"))
+
+# create rangeselector buttons
+rs <- list(visible = TRUE, x = 0.5, y = -0.055,
+           xanchor = 'center', yref = 'paper',
+           font = list(size = 9),
+           buttons = list(
+             list(count=1,
+                  label='RESET',
+                  step='all'),
+             list(count=3,
+                  label='3 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 MO',
+                  step='month',
+                  stepmode='backward')
+           ))
+
+# subplot with shared x axis
+fig <- subplot(fig, fig2, heights = c(0.7,0.2), nrows=2,
+             shareX = TRUE, titleY = TRUE)
+fig <- fig %>% layout(title = paste("Dow Inc. Stock Price: January 2020 - March 2023"),
+         xaxis = list(rangeselector = rs),
+         legend = list(orientation = 'h', x = 0.5, y = 1,
+                       xanchor = 'center', yref = 'paper',
+                       font = list(size = 10),
+                       bgcolor = 'transparent'))
+
+fig
+```
+
+### Differentitaed Chart Series
+
+```{r}
+log(data.info$`DOW.Adjusted`) %>% diff() %>% chartSeries(theme=chartTheme('white'),up.col='#DC7633')
+```
+
+### GDP Growth
+
+```{r}
+#import the data
+gdp <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+
+#change date format
+gdp$Date <- as.Date(gdp$DATE , "%m/%d/%Y")
+
+#drop DATE column
+gdp <- subset(gdp, select = -c(1))
+
+#export the cleaned data
+gdp_clean <- gdp
+write.csv(gdp_clean, "DATA/CLEANED DATA/gdp_clean_data.csv", row.names=FALSE)
+
+#plot gdp growth rate 
+fig <- plot_ly(gdp, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(240, 128, 128)'))
+fig <- fig %>% layout(title = "U.S GPD Growth Rate: 2010 - 2022",xaxis = list(title = "Time"),yaxis = list(title ="GDP Growth Rate"))
+fig
+```
+
+### Inflation
+
+```{r}
+#import the data
+inflation_rate <- read.csv("DATA/RAW DATA/inflation-rate.csv")
+
+#cleaning the data
+#remove unwanted columns
+inflation_rate_clean <- subset(inflation_rate, select = -c(1,HALF1,HALF2))
+
+#convert the data to time series data
+inflation_data_ts <- ts(as.vector(t(as.matrix(inflation_rate_clean))), start=c(2010,1), end=c(2023,2), frequency=12)
+
+#export the data
+write.csv(inflation_rate_clean, "DATA/CLEANED DATA/inflation_rate_clean_data.csv", row.names=FALSE)
+
+
+#plot inflation rate 
+fig <- autoplot(inflation_data_ts, ylab = "Inflation Rate", color="#FFA07A")+ggtitle("U.S Inflation Rate: January 2020 - February 2023")+theme_bw()
+ggplotly(fig)
+```
+
+### Interest
+
+```{r}
+#import the data
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+
+#change date format
+interest_data$Date <- as.Date(interest_data$Date , "%m/%d/%Y")
+
+#export the cleaned data
+interest_clean_data <- interest_data
+write.csv(interest_clean_data, "DATA/CLEANED DATA/interest_rate_clean_data.csv", row.names=FALSE)
+
+#plot interest rate 
+fig <- plot_ly(interest_data, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color='rgb(219, 112, 147)'))
+fig <- fig %>% layout(title = "U.S Interest Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Interest Rate"))
+fig
+```
+
+### Unemployment
+
+```{r}
+#import the data
+unemployment_rate <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#change date format
+unemployment_rate$Date <- as.Date(unemployment_rate$Date , "%m/%d/%Y")
+
+# export the data
+write.csv(unemployment_rate, "DATA/CLEANED DATA/unemployment_rate_clean_data.csv", row.names=FALSE)
+
+#plot unemployment rate 
+fig <- plot_ly(unemployment_rate, x = ~Date, y = ~Value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(189, 183, 107)'))
+fig <- fig %>% layout(title = "U.S Unemployment Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Unemployment Rate"))
+fig
+```
+:::
+
+In 2020, the COVID-19 pandemic had a significant impact on Dow Inc.'s stock price, as the company's operations were affected by global supply chain disruptions and a decline in demand for its products. The company's stock price reached a low point in March 2020 but began to recover gradually in the following months as markets responded positively to government stimulus measures and signs of economic recovery.
+
+In 2021, Dow Inc.'s stock price continued to trend upwards, reflecting the company's strong financial performance and positive outlook for its core businesses. The company's focus on sustainability and innovation, as well as its strategic partnerships and acquisitions, have helped to position it for long-term growth and success.
+
+Overall, the stock market of Dow Inc. from 2020 to 2023 has been characterized by volatility and uncertainty, but the company's resilience and ability to adapt to changing market conditions have allowed it to emerge as a leader in the materials science industry.
+
+As discussed before, the macroeconomic factors of GDP growth, inflation, interest rates, and unemployment rate are closely interrelated and play a crucial role in the overall health and stability of an economy. From 2020 to 2023, the global economy experienced a mix of ups and downs, with periods of strong GDP growth followed by slowdowns and recessions.
+
+The second plot shows the first difference of the logarithm of the adjusted Dow Inc. stock price. Taking the first difference removes any long-term trends and transforms the time series into a stationary process. From the plot, we can observe that the first difference of the logarithm of the Dow Inc. stock price appears to be stationary, as the mean and variance are roughly constant over time.
+
+#### Enodogenous and Exogenous Variables
+
+::: panel-tabset
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+gdp_data <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+inflation_data <- read.csv("DATA/CLEANED DATA/inflation_yearly_data.csv")
+unemployment_data <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+data_clean <-df %>% dplyr::select(Date,DOW.Adjusted)
+data_clean <- data_clean %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+drop <- c("Q")
+data_clean = data_clean[,!(names(data_clean) %in% drop)]
+#interest_data 
+interest_data$Date<-as.Date(interest_data$Date,"%m/%d/%Y")
+interest_data <- interest_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(interest_data)[2] ="interest"
+drop <- c("Q")
+interest_data = interest_data[,!(names(interest_data) %in% drop)]
+#inflation_data
+inflation_data$Date<-as.Date(inflation_data$Date,"%m/%d/%Y")
+inflation_data <- inflation_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(inflation_data)[2] ="inflation"
+drop <- c("Q")
+inflation_data = inflation_data[,!(names(inflation_data) %in% drop)]
+#unemployment_data 
+unemployment_data$Date<-as.Date(unemployment_data$Date,"%m/%d/%Y")
+unemployment_data <- unemployment_data %>%
+  mutate(Q = cut.Date(Date, "quarter", labels = FALSE)) %>%
+  group_by(Q) %>%
+  filter(Date == min(Date)) %>%
+  mutate(Date = as.Date(paste0(year(Date), "-", sprintf("%02d", month(Date)), "-01")))
+colnames(unemployment_data)[2] ="unemployment"
+drop <- c("Q")
+unemployment_data = unemployment_data[,!(names(unemployment_data) %in% drop)]
+#gdp_data
+gdp_data$Date <- as.Date(gdp_data$DATE , "%m/%d/%Y")
+#drop DATE column from gdp_data
+gdp_data <- gdp_data %>%dplyr::select( Date, value)
+colnames(gdp_data)[2] ="gdp"
+
+drop <- c("Q")
+df = unemployment_data[,!(names(unemployment_data) %in% drop)]
+
+df_final <- list(data_clean,gdp_data, interest_data, inflation_data, unemployment_data)      
+final <- Reduce(function(x, y) merge(x, y, all=TRUE), df_final) 
+final <- na.omit(final)
+
+
+```
+
+### Plot
+
+```{r}
+numeric_data <- c("DOW.Adjusted","gdp", "interest", "inflation", "unemployment")
+numeric_data <- final[, numeric_data]
+normalized_data_numeric <- scale(numeric_data)
+normalized_data <- ts(normalized_data_numeric, start = c(2020, 1), end = c(2021,10),frequency = 4)
+ts_plot(normalized_data,
+        title = "Normalized Time Series Data for DOW Stock and Macroeconomic Variables",
+        Ytitle = "Normalized Values",
+        Xtitle = "Year")
+```
+
+### Correlation Heatmap
+
+```{r}
+
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+}
+cormat <- round(cor(normalized_data_numeric),2)
+
+upper_tri <- get_upper_tri(cormat)
+
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+
+```
+
+### CCF GDP
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("DOW.Adjusted")], normalized_data[, c("gdp")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for DOW Stock Price and GDP Growth Rate ",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Interest
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("DOW.Adjusted")], normalized_data[, c("interest")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for DOW Stock Price and Interest Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Inflation
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("DOW.Adjusted")], normalized_data[, c("inflation")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for DOW Stock Price and Inflation Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+
+### CCF Unemployment
+
+```{r}
+par(mfrow=c(1,1))
+ccf_result <- ccf(normalized_data[, c("DOW.Adjusted")], normalized_data[, c("unemployment")], 
+    lag.max = 300,
+    main = "Cros-Correlation Plot for DOW Stock Priceand Unemployment Rate",
+    ylab = "CCF")
+
+cat("The sum of cross correlation function is", sum(abs(ccf_result$acf)))
+```
+:::
+
+The Normalized Time Series Data for Stock Price and Macroeconomic Variables plot shows the same variables as the first plot but has been normalized to a common range of 0 to 1 using the scale() function in R, which standardizes the variables to have a mean of 0 and a standard deviation of 1. The heatmap analysis of the normalized data reveals that inflation rate exhibit strong positive correlations with the stock price indices, indicating that these variables may significantly influence stock price movements. On the other hand, weaker correlations were observed between the stock price indices and GDP and interest rates, suggesting that these variables may have less impact on stock price fluctuations. The cross-correlation feature plots confirm these findings, indicating that inflation rate are more suitable feature variables for the ARIMAX model when predicting Dow Inc. movements.
+
+Final Exogenous variables: Macroeconomic indicator: Inflation rate 
+
+#### Enodogenous and Exogenous Variables Plot
+
+::: panel-tabset
+### Plot
+
+```{r}
+final_data <- final %>%dplyr::select( Date,DOW.Adjusted, inflation)
+numeric_data <- c("DOW.Adjusted", "inflation")
+numeric_data <- final_data[, numeric_data]
+normalized_data_numeric <- scale(numeric_data)
+normalized_numeric_df <- data.frame(normalized_data_numeric)
+normalized_data_ts <- ts(normalized_data_numeric, start = c(2020, 1), frequency = 4)
+
+autoplot(normalized_data_ts, facets=TRUE) +
+  xlab("Year") + ylab("") +
+  ggtitle("Dow Inc. Stock Price, Inflation Rate in USA 2020-2023")
+```
+
+### Check the stationarity
+
+```{r}
+# Convert your multivariate time series data to a matrix
+final_data_ts_multivariate <- as.matrix(normalized_data_ts)
+
+# Check for stationarity using Phillips-Perron test
+phillips_perron_test <- ur.pp(final_data_ts_multivariate)  
+summary(phillips_perron_test)
+```
+:::
+
+The results of the Phillips-Perron unit root test indicate strong evidence against the null hypothesis of a unit root, as the p-value for the coefficient of the lagged variable is less than the significance level of 0.05. This suggests that the variable y, which is being tested for stationarity, is likely stationary. Furthermore, the test statistic Z-tau-mu is 0.3401, which is smaller than the critical value of Z-alpha (-6.0229), providing further evidence of stationarity.
+
+To determine whether the linear model requires an ARCH model, an ARCH test is conducted. The ACF and PACF plots are also used to identify suitable model values.
+
+#### Model Fitting
+
+::: panel-tabset
+### Plot
+
+```{r}
+normalized_numeric_df$DOW.Adjusted<-ts(normalized_numeric_df$DOW.Adjusted,star=decimal_date(as.Date("2020-01-01",format = "%Y-%m-%d")),frequency = 4)
+normalized_numeric_df$inflation<-ts(normalized_numeric_df$inflation,star=decimal_date(as.Date("2020-01-01",format = "%Y-%m-%d")),frequency = 4)
+
+
+fit <- lm(DOW.Adjusted ~ inflation, data=normalized_numeric_df)
+fit.res<-ts(residuals(fit),star=decimal_date(as.Date("2020-01-01",format = "%Y-%m-%d")),frequency = 4)
+############## Then look at the residuals ############
+returns <- fit.res  %>% diff()
+autoplot(returns)+ggtitle("Linear Model Returns")
+```
+
+### ARCH Test
+
+```{r}
+byd.archTest <- ArchTest(fit.res, lags = 1, demean = TRUE)
+byd.archTest
+```
+:::
+
+The ARCH LM-test was conducted with the null hypothesis of no ARCH effects. The test resulted in a chi-squared value of 0.37793 with one degree of freedom, and a very low p-value of 0.5387. This suggests strong evidence for the null hypothesis, indicating the no presence of ARCH effects in the data.

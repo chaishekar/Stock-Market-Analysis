@@ -1,0 +1,327 @@
+---
+title: "EDA for Dow Jones Index"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+Exploratory Data Analysis (EDA) for the Dow Jones Index involves analyzing time series data to identify the underlying patterns and characteristics of the index. The Dow Jones is a stock market index that measures the performance of 30 large companies listed on the US stock exchanges. EDA for the Dow Jones typically involves analyzing the daily closing prices of the index and examining key aspects such as autocorrelation, seasonality, trend, and stationarity. This information can be used to identify potential patterns and trends in the data, inform our modeling approach, and potentially improve our investment strategies.
+
+##### Time Series Plot
+
+```{r warning=FALSE}
+# get data
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+
+data = getSymbols("^DJI",src='yahoo', from = '2010-01-01',to = "2023-03-01")
+
+df <- data.frame(Date=index(DJI),coredata(DJI))
+
+# create Bollinger Bands
+bbands <- BBands(DJI[,c("DJI.High","DJI.Low","DJI.Close")])
+
+# join and subset data
+df <- subset(cbind(df, data.frame(bbands[,1:3])), Date >= "2010-01-01")
+
+#export the data 
+dji_data <- df
+write.csv(dji_data, "DATA/CLEANED DATA/dji_raw_data.csv", row.names=FALSE)
+
+# colors column for increasing and decreasing
+for (i in 1:length(df[,1])) {
+  if (df$DJI.Close[i] >= df$DJI.Open[i]) {
+      df$direction[i] = 'Increasing'
+  } else {
+      df$direction[i] = 'Decreasing'
+  }
+}
+
+i <- list(line = list(color = '#6F9860'))
+d <- list(line = list(color = '#7F7F7F'))
+
+# plot candlestick chart
+
+fig <- df %>% plot_ly(x = ~Date, type="candlestick",
+          open = ~DJI.Open, close = ~DJI.Close,
+          high = ~DJI.High, low = ~DJI.Low, name = "DJI",
+          increasing = i, decreasing = d) 
+fig <- fig %>% add_lines(x = ~Date, y = ~up , name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands",
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% add_lines(x = ~Date, y = ~dn, name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands", inherit = F,
+            showlegend = FALSE, hoverinfo = "none") 
+fig <- fig %>% add_lines(x = ~Date, y = ~mavg, name = "Mv Avg",
+            line = list(color = '#E377C2', width = 0.5),
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% layout(yaxis = list(title = "Price"))
+
+# plot volume bar chart
+fig2 <- df 
+fig2 <- fig2 %>% plot_ly(x=~Date, y=~DJI.Volume, type='bar', name = "DJI Volume",
+          color = ~direction, colors = c('#6F9860','#7F7F7F')) 
+fig2 <- fig2 %>% layout(yaxis = list(title = "Volume"))
+
+# create rangeselector buttons
+rs <- list(visible = TRUE, x = 0.5, y = -0.055,
+           xanchor = 'center', yref = 'paper',
+           font = list(size = 9),
+           buttons = list(
+             list(count=1,
+                  label='RESET',
+                  step='all'),
+             list(count=3,
+                  label='3 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 MO',
+                  step='month',
+                  stepmode='backward')
+           ))
+
+# subplot with shared x axis
+fig <- subplot(fig, fig2, heights = c(0.7,0.2), nrows=2,
+             shareX = TRUE, titleY = TRUE)
+fig <- fig %>% layout(title = paste("DOW Jones Index Stock Price: January 2010 - March 2023"),
+         xaxis = list(rangeselector = rs),
+         legend = list(orientation = 'h', x = 0.5, y = 1,
+                       xanchor = 'center', yref = 'paper',
+                       font = list(size = 10),
+                       bgcolor = 'transparent'))
+
+fig
+
+```
+
+The Dow Jones Industrial Average (DJIA) stock prices from 2010 to March 2023 have displayed a volatile trend, reflecting the changes in the US stock market during this period. The DJIA witnessed a steady growth in the early 2010s, achieving new all-time highs by 2013. However, it experienced a sharp correction in the second half of 2015 and early 2016, followed by a quick recovery. The DJIA hit new highs in 2018 and 2019, only to be impacted by the COVID-19 pandemic in 2020, resulting in a significant decline followed by a quick recovery aided by government stimulus measures. The DJIA reached a new all-time high in May 2021.
+
+Inflation has played a crucial role in shaping the DJIA stock prices during this period. The US experienced moderate inflation rates during the early 2010s, and inflation remained subdued until the COVID-19 pandemic hit in 2020, causing significant disruptions to supply chains, resulting in higher prices for goods and services. Inflation rates surged in 2021, leading to concerns about its impact on the economy and the stock market. However, the Federal Reserve has indicated that the current inflationary pressures are transitory.
+
+For stock prices, a multiplicative decomposition is typically preferred because the percentage changes in stock prices tend to be more important than the absolute changes. For example, a \$1 increase in a \$10 stock price is more significant than a \$1 increase in a \$100 stock price. Therefore, the relative changes in stock prices are more relevant than the absolute changes. Additionally, stock prices tend to exhibit non-constant variance, meaning that the variance of the series changes over time. A multiplicative decomposition can handle this non-constant variance more effectively than an additive decomposition.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#time series data
+myts<-ts(df$DJI.Adjusted,frequency=252,start=c(2010,1,1)) 
+#original plot for time series data
+orginial_plot <- autoplot(myts,xlab ="Year", ylab = "Adjusted Closing Price", main = "DOW Jones Index Stock price: Jan 2010 - March 2023")
+#decompose the data
+decompose = decompose(myts, "multiplicative")
+#decomposition plot
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+#adjusted plot
+trendadj <- myts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='trend') +ggtitle('Adjusted trend component in the multiplicative time series model')
+seasonaladj <- myts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the multiplicative time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+
+```
+:::
+
+The adjusted seasonal component tend to have upward trend and there is more variability in the model when compared to the original plot where the variation during the years but the adjusted trend then to have more fluctuation showing no trend when compared to the original plot.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(myts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for DOW Jones Index Stock Jan 2010 - March 2023")
+```
+
+##### Monthly Time Lags
+
+```{r warning=FALSE}
+#montly data
+mean_data <- df %>% 
+  mutate(month = month(Date), year = year(Date)) %>% 
+  group_by(year, month) %>% 
+  summarize(mean_value = mean(DJI.Adjusted))
+month<-ts(mean_data$mean_value,star=decimal_date(as.Date("2010-01-01",format = "%Y-%m-%d")),frequency = 12)
+#Lag plot
+ts_lags(month)
+```
+:::
+
+Lag Plot for DOW Jones Index Stock Jan 2010 - March 2023, there should be a strong link between the series and the related lag as there are positive correlation and inclined to 45 degree.This is the lag plot signature of a process with strong positive autocorrelation. Such processes are highly non-random, there is strong association between an observation and a succeeding observation. Additionally, seasonality can be examined by plotting observations for a larger number of time periods i.e. the lags. Using the mean function, the time series data is aggregated to monthly data for better understanding of the series and for the clearer plots. Observing the last graph closely reveals that more dots are on to the diagonal line at 45 degrees.the second graph indicates the monthly of the variable on the vertical axis. The lines connect points in chronological order. This suggest that there is strong association between an observation and a succeeding observation.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(month, color = "PuRd", title = 'Seasonality Heatmap of DOW Jones Index Stock Jan 2010 - March 2023')
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(month, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot for DOW Jones Index Stock Jan 2010 - March 2023")
+```
+:::
+
+The Seasonality Heatmap for the DOW Jones Index Stock Jan 2010 - March 2023 does not reveal any clear seasonality in the data. The heatmap shows the mean value of the time series for each month and year combination, with the darker colors indicating higher values. The lack of clear patterns or darker colors in specific months or years suggests that there is no consistent seasonal pattern in the data. However, the yearly line graph shows a slight upward trend in the stock price from 2010 to 2023, but does not show any clear seasonality. Each year's data is represented by a line, and the months are plotted on the x-axis. Overall, the lack of clear seasonality in both the heatmap and yearly line graph suggests that other factors beyond seasonality are driving the stock price fluctuations.
+
+#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("DOW Jones Index Stock Jan 2010 - March 2023(4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("DOW Jones Index Stock Jan 2010 - March 2023(1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("DOW Jones Index Stock Jan 2010 - March 2023(3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+
+##### 5 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,61), series="5 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("DOW Jones Index Stock Jan 2010 - March 2023(5 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","5 Year MA"="red"),
+                      breaks=c("Data","5 Year MA"))
+ma
+```
+:::
+
+The four plots show the DOW Jones Index stock prices from January 2010 to March 2023, along with the moving averages for 4 months, 1 year, 3 years and 5 years. As the window of the moving average increases, the smoother the trend line becomes, reducing the impact of noise and fluctuations in the original time series.
+
+The 4-month moving average plot shows frequent fluctuations in the stock price, with the trend line following the general direction of the time series. The 1-year moving average plot shows a smoother trend, following the overall upward trend of the stock price.
+
+The 3-year moving average plot shows a similar trend to the 1-year plot but is even smoother, with fewer fluctuations. Finally, the 5-year moving average plot shows the smoothest trend, with an almost constant upward slope.As the moving average window increases, the smoother trend allows for a clearer identification of the general trend of the DOW Jones Index stock prices over time. From the moving average obtained above we can see that there is upward tend in the stock price of DOW Jones Index.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+#ACF for  data
+ggAcf(month)+ggtitle("ACF Plot for DOW Jones Index Stock Jan 2010 - March 2023")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF for data
+ggPacf(month)+ggtitle("PACF Plot for DOW Jones Index Stock Jan 2010 - March 2023")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+#check the stationarity
+tseries::adf.test(month)
+```
+:::
+
+In the plot of autocorrelation function, which is the acf graph for monthly data, there are clear autocorrelation in lag. The above lag plots and autocorrelation plot indicates seasonality in the series, which means the series is not stationary.. It was also verified using Augmented Dickey-Fuller Test which tells us that as the p value is greater than 0.05, the series is not stationary.
+
+#### Detrend and Differenced Time Series
+
+::: panel-tabset
+##### Linear Fitting Model
+
+```{r warning=FALSE}
+fit = lm(myts~time(myts), na.action=NULL) 
+summary(fit) 
+```
+
+##### ACF Plot
+
+```{r warning=FALSE}
+# plot ACFs
+plot1 <- ggAcf(myts, 48, main="Original Data: DOW Jones Index Stock Stock Price")
+plot2 <- ggAcf(resid(fit), 48, main="Detrended data")
+plot3 <- ggAcf(diff(myts), 48, main="First differenced data")
+grid.arrange(plot1, plot2, plot3, nrow=3)
+
+```
+:::
+
+The estimated slope coefficient β1, 2.821e+03. With a standard error of 1.233e+01, yielding a significant estimated increase of stock price is very less yearly. Equation of the fit for stationary process: $$\hat{y}_{t} = x_{t}+(5.662e+06)-(2.821e+03)t$$
+
+From the above graph we can say that there is high correlation in the original plot, but in the detrended plot the correlation is reduced but there is still high correlation in the detrended data.But when the first order difference is applied the high correlation is removed but there is no seasonal correlation.
+
+As depicted in the above figure, the series is now stationary and ready for future study.

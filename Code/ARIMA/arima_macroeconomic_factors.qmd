@@ -1,0 +1,25 @@
+---
+title: "ARIMA/SARIMA Model for Macroeconomic Factors"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+Macroeconomic factors, such as inflation rates, gross domestic product (GDP),interest rate and unemployment rates, play a critical role in the performance of the global economy. Accurately forecasting these factors is essential for policymakers, investors, and financial institutions seeking to make informed decisions.
+
+The ARIMA and SARIMA models are commonly used time series analysis techniques for modeling and forecasting macroeconomic factors. The ARIMA model is a flexible and widely applicable model that can handle a wide range of data patterns, while the SARIMA model is a variant of the ARIMA model that incorporates seasonality into the analysis.
+
+The choice between ARIMA and SARIMA models depends on the presence or absence of seasonality in the data. If the data exhibits seasonality, the SARIMA model may be more appropriate, as it allows for the modeling of both seasonal and non-seasonal patterns in the data. However, if the data does not exhibit seasonality, the ARIMA model may be sufficient for modeling and forecasting the macroeconomic factor of interest.
+
+Overall, the ARIMA and SARIMA models are powerful tools for modeling and forecasting macroeconomic factors, allowing analysts to identify unique patterns and trends and make more accurate predictions about future performance. However, as with any forecasting model, it is important to carefully consider the underlying assumptions and limitations of the model and incorporate relevant exogenous variables where appropriate.
+
+[Click to view SARIMA Page for GDP Growth Rate](arima_macroeconomic_gdp.html)
+
+[Click to view SARIMA Page for Interest Rate](arima_macroeconomic_interest.html)
+
+[Click to view SARIMA Page for Inflation Rate](arima_macroeconomic_inflation.html)
+
+[Click to view ARIMA Page for Unemployment Rate](arima_macroeconomic_unemployment.html)

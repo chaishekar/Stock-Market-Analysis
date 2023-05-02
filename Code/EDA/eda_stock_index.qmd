@@ -1,0 +1,27 @@
+---
+title: "EDA for US Stock Index"
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+Exploratory Data Analysis (EDA) is an essential process in understanding the underlying patterns and characteristics of financial data. EDA for the Dow Jones, NASDAQ, and S&P 500 stock market indices typically involves analyzing time series data. Time series data refers to observations of a variable over time, such as the daily closing prices of a stock market index.
+
+One of the key aspects of EDA for time series data is identifying the presence of autocorrelation. Autocorrelation refers to the correlation between a variable and its past values. The autocorrelation function (ACF) and partial autocorrelation function (PACF) plots can help identify the degree of correlation between the variable and its past values. This information can be useful for forecasting future values and identifying potential patterns in the data.
+
+Another important aspect of EDA for time series data is identifying the presence of seasonality. Seasonality refers to a pattern that repeats itself in the data over regular intervals, such as daily, weekly, or monthly. Identifying seasonality is important as it can help us identify potential patterns and trends in the data, and it can inform our modeling approach.
+
+Additionally, examining moving averages and detrending can help identify the underlying trend in the data. Moving averages are used to smooth out short-term fluctuations in the data, and detrending can help identify the underlying trend that is not related to the seasonal or cyclical fluctuations in the data.
+
+Finally, testing for stationarity is important as it allows us to apply statistical models that assume the data to be stationary. Stationarity refers to the property of a time series where its statistical properties, such as mean and variance, remain constant over time. If the data is non-stationary, it can be transformed to become stationary through techniques such as differencing or taking logarithms.
+
+This information can be used to inform our modeling approach, identify potential patterns and trends, and improve our investment strategies.
+
+[Click to view EDA Page for Dow Jones Index](eda_index_dow_jones.html)
+
+[Click to view EDA Page for NADSAQ Composite Index](eda_index_nadsaq.html)
+
+[Click to view EDA Page for S&P 500 Index](eda_index_sp500.html)

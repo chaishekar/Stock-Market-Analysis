@@ -1,0 +1,475 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+#### World Bank
+
+The World Bank is a comprehensive platform that provides access to a wide range of economic, social, and environmental indicators from around the world. With data covering topics such as poverty, health, education, infrastructure, and trade, the World Bank data page is a valuable resource for researchers, policymakers, and anyone interested in global development. The platform features interactive tools and visualizations that allow users to explore and analyze data in meaningful ways, making it a powerful tool for understanding the complex challenges facing the world today.
+
+The global stock market has been highly volatile and unpredictable in recent years due to various factors, including political tensions, trade disputes, and the ongoing COVID-19 pandemic. While some sectors, such as technology and healthcare, have seen significant growth and increased investor interest, others have struggled to keep up. Additionally, inflation concerns and shifts in monetary policy by central banks have added further uncertainty to the market. Despite these challenges, many investors continue to see potential for growth and value in the global stock market, and the availability of online trading platforms has made it easier than ever for individuals to participate in this dynamic and complex market.
+
+::: {#viz1680238602072 .tableauPlaceholder style="position: relative"}
+<noscript><a href='#'> <img src="https://public.tableau.com/static/images/Gl/GlobalStockTrade/Sheet1/1_rss.png" alt="Global Stock Trade US currency " style="border: none"/></a></noscript>
+
+<object class="tableauViz" style="display:none;">
+
+<param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='site_root' value='' /><param name='name' value='GlobalStockTrade&#47;Sheet1' /><param name='tabs' value='no' /><param name='toolbar' value='yes' /><param name='static_image' value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;Gl&#47;GlobalStockTrade&#47;Sheet1&#47;1.png' /> <param name='animate_transition' value='yes' /><param name='display_static_image' value='yes' /><param name='display_spinner' value='yes' /><param name='display_overlay' value='yes' /><param name='display_count' value='yes' /><param name='language' value='en-US' /><param name='filter' value='publish=yes' />
+
+</object>
+:::
+
+```{js, emboded, echo=FALSE, message=FALSE, warning=FALSE}
+var divElement = document.getElementById('viz1680238602072');                    
+var vizElement = divElement.getElementsByTagName('object')[0];                    vizElement.style.width='100%';vizElement.style.height=(divElement.offsetWidth*0.75)+'px';               
+var scriptElement = document.createElement('script');                    
+scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';                    vizElement.parentNode.insertBefore(scriptElement, vizElement);                
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/world_trade_data.xls)
+:::
+
+## **Sector Market Data**
+
+A stock market sector is a group of stocks that have a lot in common with each other, usually because they are in similar industries. There are 11 different stock market sectors, according to the most commonly used classification system: the Global Industry Classification Standard (GICS).![](IMAGES/SECTOR%20STOCK%20MARKET.png)
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+library(wesanderson)
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+tickers = c("XLC","XLY","XLP", "XLE", "XLF", "XLV","XLI","XLB", "XLRE", "XLK","XLU")
+for (i in tickers){
+  getSymbols(i,
+             from = "2018-07-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+stock <- data.frame(XLC$XLC.Adjusted,
+                    XLY$XLY.Adjusted,
+                    XLP$XLP.Adjusted,
+                    XLE$XLE.Adjusted,
+                    XLF$XLF.Adjusted,
+                    XLV$XLV.Adjusted,
+                    XLI$XLI.Adjusted,
+                    XLB$XLB.Adjusted,
+                    XLRE$XLRE.Adjusted,
+                    XLK$XLK.Adjusted,
+                    XLU$XLU.Adjusted)
+
+#create dataframe
+sector_stock_data = cbind(XLC,XLY,XLP, XLE, XLF, XLV,XLI,XLB, XLRE, XLK,XLU)
+sector_stock_data = as.data.frame(sector_stock_data)
+#export it to csv file
+write_csv(sector_stock_data, "DATA/RAW DATA/sector_stock_data.csv")
+
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+
+plot<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=XLC, colour="Communication Services"))+
+  geom_line(aes(y=XLY, colour="Consumer Discretionary"))+
+  geom_line(aes(y=XLP, colour="Consumer Staples"))+
+  geom_line(aes(y=XLE, colour="Energy"))+
+  geom_line(aes(y=XLF, colour="Financials"))+
+  geom_line(aes(y=XLV, colour="Health Care"))+
+  geom_line(aes(y=XLI, colour="Industrials"))+
+  geom_line(aes(y=XLB, colour="Materials"))+
+  geom_line(aes(y=XLRE, colour="Real Estate"))+
+  geom_line(aes(y=XLK, colour="Technology"))+
+  geom_line(aes(y=XLU, colour="Utilities"))+
+  scale_color_brewer(palette="BuPu")+
+  theme_bw()+
+   labs(
+    title = "Stock Market Sector History",
+    subtitle = "From July 2018 - January 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Sectors")) 
+
+  
+
+
+
+ggplotly(plot)%>%
+  layout(title = list(text = paste0('Stock Market Sector History',
+                                    '<br>',
+                                    '<sup>',
+                                    'From July 2018 - January 2023',
+                                    '</sup>')))
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/sector_stock_data.csv)
+:::
+
+#### **Historical Asset Data**
+
+Analyzing historical returns on various investments is one of the most important tasks in financial markets. We need historical data for the assets to perform this analysis. There are numerous data providers, some of which are free while the majority are not. R Package designed to assist the quantitative trader in the development, testing, and deployment of statistically based trading models. The Quantmod -- "Quantitative Financial Modeling and Trading Framework for R"! package can load data, chart data, and generate relevant technical signals. This package is compatible with a variety of sources, including Yahoo Finance and FRED. By default, getSymbols() downloads data from Yahoo at the daily frequency and the object has 6 columns representing the open, high, low, close, volume and adjusted closing price for the stock.
+
+#### **Yahoo Finance**
+
+The Yahoo Finance gives users immediate access to hours of live market coverage each day, complete with in-depth analysis and data. Investors, financial experts, and corporate executives who are serious about their money belong here. You can access this data at <https://finance.yahoo.com/> .
+
+## **Global Stock Indices Historical Data**
+
+Global indices are a benchmark to evaluate the strength or weakness in the overall market. Normally, a sample of highly liquid and valuable stocks from the universe of listed stocks is selected and made into an index. The weighted movement of these set of stocks or portfolio of stocks constitutes the movement of global indices. So, if global indices are moving up that means the markets are strong and if global indices are moving lower that means global markets are weak. You can understand global indices as a hypothetical portfolio of investment holdings that represents a segment of the financial market or the global indices market. The calculation of the index value is derived from the prices of the underlying stocks or assets in the index.
+
+The data is importing continent-wise, to check the top stock market index around the world.
+
+::: panel-tabset
+#### North America and South America
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+#America's top stock market index
+tickers = c("^GSPC","^DJI","^IXIC", "^RUT")
+
+for (i in tickers){
+  getSymbols(i,
+             from = "2000-01-01",
+             to = "2023-01-01")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+#create dataframe
+america_stock_index_data = cbind(GSPC,DJI,IXIC,RUT)
+america_stock_index_data = as.data.frame(america_stock_index_data)
+#export it to csv file
+write_csv(america_stock_index_data, "DATA/RAW DATA/america_stock_index_data.csv")
+
+stock <- data.frame(GSPC$GSPC.Adjusted,
+                    DJI$DJI.Adjusted,
+                    IXIC$IXIC.Adjusted,
+                    RUT$RUT.Adjusted)
+
+
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+colnames(stock)=c("GSPC","DJI","IXIC","RUT","Dates","date")
+
+
+#remove columns
+stock <- stock[,-c(5)]
+plot<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=GSPC, colour="S&P 500 Index"))+
+  geom_line(aes(y=DJI, colour="Dow Jones Industrial Average"))+
+  geom_line(aes(y=IXIC, colour="NASDAQ Composite"))+
+  geom_line(aes(y=RUT, colour="Russell 2000"))+
+  scale_color_brewer(palette="RdPu")+
+  theme_bw()+
+   labs(
+    title = "America's Top Stock Market Index History",
+    subtitle = "From January 2000 - January 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Indices")) 
+
+  
+
+
+plot = ggplotly(plot)%>%
+  layout(title = list(text = paste0("America's Top Stock Market Index History",
+                                    '<br>',
+                                    '<sup>',
+                                    'From January 2000 - January 2023',
+                                    '</sup>')))
+ggplotly(plot)%>%layout(hovermode = "x")
+
+
+
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/america_stock_index_data.csv)
+:::
+
+#### Europe and Africa
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#Europe and Africa Top Indices
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+tickers = c("^GDAXI","^FTSE","^FCHI", "^IBEX","^STOXX50E")
+for (i in tickers){
+  getSymbols(i,
+             from = "2018-01-01",
+             to = "2023-01-01", periodicity="monthly")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+#create dataframe
+europe_africa_stock_index_data = cbind(GDAXI,FTSE,FCHI,IBEX,STOXX50E)
+europe_africa_stock_index_data = as.data.frame(europe_africa_stock_index_data)
+#export it to csv file
+write_csv(europe_africa_stock_index_data, "DATA/RAW DATA/europe_africa_stock_index_data.csv")
+
+
+stock <- data.frame(GDAXI$GDAXI.Adjusted,
+                    FTSE$FTSE.Adjusted,
+                    FCHI$FCHI.Adjusted,
+                    IBEX$IBEX.Adjusted,
+                    STOXX50E$STOXX50E.Adjusted)
+
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+colnames(stock)=c("GDAXI","FTSE","FCHI","IBEX","STOXX50E","Dates","date")
+#remove columns
+stock <- stock[,-c(6)] 
+plot<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=GDAXI, colour="DAX PERFORMANCE-INDEX"))+
+  geom_line(aes(y=FTSE, colour="FTSE 100 Index"))+
+  geom_line(aes(y=FCHI, colour="CAC 40"))+
+  geom_line(aes(y=IBEX, colour="IBEX 35"))+
+  geom_line(aes(y=STOXX50E, colour="EURO STOXX 50"))+
+  scale_color_brewer(palette="ВuPu")+
+  theme_bw()+
+   labs(
+    title = "Europes and Africa's Top Stock Market Index History",
+    subtitle = "From January 2018 - January 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Indices")) 
+
+  
+
+
+ggplotly(plot)%>%
+  layout(title = list(text = paste0("Europes and Africa's Top Stock Market Index History",
+                                    '<br>',
+                                    '<sup>',
+                                    'From January 2018 - January 2023',
+                                    '</sup>')))
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/europe_africa_stock_index_data.csv)
+:::
+
+#### Asia and Australia
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#Asia and Australia Top Indices
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+tickers = c("^N225","^HSI", "^BSESN","^NSEI","^KS11", "^AORD")
+for (i in tickers){
+  getSymbols(i,
+             from = "2012-01-01",
+             to = "2023-01-01", periodicity="monthly")}
+
+x <- list(
+  title = "date"
+)
+y <- list(
+  title = "value"
+)
+
+#create dataframe
+asia_australia_stock_index_data = cbind(N225,HSI,BSESN,NSEI,AORD)
+asia_australia_stock_index_data = as.data.frame(asia_australia_stock_index_data)
+#export it to csv file
+write_csv(asia_australia_stock_index_data, "DATA/RAW DATA/asia_australia_stock_index_data.csv")
+
+stock <- data.frame(N225$N225.Adjusted,
+                    HSI$HSI.Adjusted,
+                    BSESN$BSESN.Adjusted,
+                    NSEI$NSEI.Adjusted,
+                    KS11$KS11.Adjusted,
+                    AORD$AORD.Adjusted)
+
+
+stock <- data.frame(stock,rownames(stock))
+colnames(stock) <- append(tickers,'Dates')
+
+stock$date<-as.Date(stock$Dates,"%Y-%m-%d")
+colnames(stock)=c("N225","HSI","BSESN","NSEI","KS11","AORD","Dates","date")
+#remove columns
+stock <- stock[,-c(7)] 
+plot<- ggplot(stock, aes(x=date)) +
+  geom_line(aes(y=N225, colour="Nikkei 225"))+
+  geom_line(aes(y=HSI, colour="Hang Seng Index"))+
+  geom_line(aes(y=BSESN, colour="BSE SENSEX"))+
+  geom_line(aes(y=NSEI, colour="NIFTY 50"))+
+  geom_line(aes(y=KS11, colour="KOSPI Composite Index"))+
+  geom_line(aes(y=AORD, colour="ALL ORDINARIES"))+
+  scale_color_brewer(palette="PuBu")+
+  theme_bw()+
+   labs(
+    title = "Asia's Top Stock Market Index History",
+    subtitle = "From January 2012 - January 2023",
+    x = "Date",
+    y = "Adjusted Closing Prices")+
+    guides(colour=guide_legend(title="Indices")) 
+
+  
+
+
+ggplotly(plot)%>%
+  layout(title = list(text = paste0("Asia and Australia's Top Stock Market Index History",
+                                    '<br>',
+                                    '<sup>',
+                                    'From January 2012 - January 2023',
+                                    '</sup>')))
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/asia_australia_stock_index_data.csv)
+:::
+:::
+
+## **Macroeconomic Factors Data**
+
+Macroeconomic factors such as inflation rates, gross domestic product (GDP), unemployment rates, and interest rates have a significant impact on financial markets. Historical data on these factors is crucial for analyzing and predicting market trends.
+
+#### The Federal Reserve Economic Data
+
+The Federal Reserve Economic Data (FRED) website, maintained by the Federal Reserve Bank of St. Louis, is a reliable source for GDP growth rate data. It offers a range of data frequencies and time periods, with a user-friendly interface featuring interactive charts and graphs to visualize trends and patterns. The website also provides tools and resources to manipulate and analyze the data, making it a valuable resource for researchers, analysts, and policymakers alike. You can access this data at <https://fred.stlouisfed.org/>.
+
+#### U.S. Bureau of Labor Statistics
+
+The U.S. Bureau of Labor Statistics (BLS) is a government agency that collects and disseminates data related to labor economics and statistics. One of the key data sets provided by the BLS is information on employment, unemployment, and wages. This data is widely used by economists, policymakers, and businesses to analyze labor market trends and make informed decisions. Additionally, the BLS provides data on other economic indicators such as inflation and productivity. The agency's commitment to providing accurate, reliable, and timely data has made it a trusted source for labor market information in the United States. You can access this data at <https://www.bls.gov/>.
+
+##### About the Macroeconomic Factor Data
+
+The economic data related to inflation, unemployment, GDP growth rate and interest rate are crucial indicators of the health of an economy. Inflation rate measures the general increase in prices of goods and services over time, which is an essential measure of price stability. The unemployment rate measures the percentage of people who are seeking employment but are unable to find it, indicating the level of economic activity and labor market health. GDP growth rate measures the change in the value of goods and services produced in an economy over time and is an indicator of economic performance. Interest rates measure the cost of borrowing money, and changes in interest rates can have significant impacts on consumer spending, investment, and borrowing decisions.
+
+::: panel-tabset
+#### GDP Growth Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+gdp <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+
+#change date format
+gdp$DATE <- as.Date(gdp$DATE , "%m/%d/%Y")
+
+#plot gdp growth rate
+fig <- plot_ly(gdp, x = ~DATE, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(158,202,225)'))
+fig <- fig %>% layout(title = "U.S GDP Growth Rate: 2010 - 2022",xaxis = list(title = "Year"),yaxis = list(title ="GDP Growth Rate"))
+fig
+
+
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/gdp-growth.csv)
+:::
+
+#### Interest Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+
+#change date format
+interest_data$Date <- as.Date(interest_data$Date , "%m/%d/%Y")
+
+#plot interest rate 
+fig <- plot_ly(interest_data, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(222, 92, 92)'))
+fig <- fig %>% layout(title = "U.S Interest Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Interest Rate"))
+fig
+
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/interest-rate.csv)
+:::
+
+#### Inflation Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+inflation_rate <- read.csv("DATA/RAW DATA/inflation-rate.csv")
+
+
+#cleaning the data
+#remove unwanted columns
+inflation_rate_clean <- subset(inflation_rate, select = -c(1,HALF1,HALF2))
+
+#convert the data to time series data
+inflation_data_ts <- ts(as.vector(t(as.matrix(inflation_rate_clean))), start=c(2010,1), end=c(2023,2), frequency=12)
+
+#plot inflation rate 
+fig <- autoplot(inflation_data_ts, ylab = "Inflation Rate", color="#45818E")+ggtitle("U.S Inflation Rate: January 2010 - February 2023")+theme_minimal()
+ggplotly(fig)
+
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/inflation-rate.csv)
+:::
+
+#### Unemployment Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+unemployment_rate <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#change date format
+unemployment_rate$Date <- as.Date(unemployment_rate$Date , "%m/%d/%Y")
+
+#plot unemployment rate 
+#plot interest rate 
+fig <- plot_ly(unemployment_rate, x = ~Date, y = ~Value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(135, 153, 164)'))
+fig <- fig %>% layout(title = "U.S Unemployment Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Unemployment Rate"))
+fig
+
+```
+
+::: {align="center"}
+[Download CSV](DATA/RAW%20DATA/unemployment-rate.csv)
+:::
+:::

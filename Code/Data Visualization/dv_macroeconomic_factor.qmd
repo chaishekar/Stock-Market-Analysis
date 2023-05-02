@@ -1,0 +1,112 @@
+---
+editor: visual
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    code-link: true
+    page-layout: full
+---
+## Data Visualization for Macroeconomic Factors
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+```
+
+### Gross Domestic Product Growth Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+gdp <- read.csv("DATA/RAW DATA/gdp-growth.csv")
+
+#change date format
+gdp$DATE <- as.Date(gdp$DATE , "%m/%d/%Y")
+
+#plot gdp growth rate 
+fig <- plot_ly(gdp, x = ~DATE, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(179, 210, 165)'))
+fig <- fig %>% layout(title = "U.S GPD Growth Rate: 2010 - 2022",xaxis = list(title = "Time"),yaxis = list(title ="GDP Growth Rate"))
+fig
+
+```
+
+The period between 2010 and 2022 has been characterized by moderate fluctuations in economic growth. After a period of slow growth following the 2008 financial crisis, the US economy experienced a notable uptick in GDP growth from 2012 to 2015, with rates reaching a peak of 2.9% in 2015. However, growth rates began to decline again from 2016 to 2019, falling to a low of 2.2% in 2019. The COVID-19 pandemic caused a sharp contraction in the economy in 2020, with GDP growth falling by 3.5%, the largest annual decline since the 1940s. However, there was a partial recovery in 2021, with growth rates projected to reach 6.3% by the end of the year, reflecting a combination of fiscal stimulus measures and the easing of pandemic-related restrictions. Overall, the trend in GDP growth rate in the United States from 2010 to 2022 has been characterized by moderate fluctuations, with notable shifts in response to both domestic and global economic conditions.
+
+### Interest Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+interest_data <- read.csv("DATA/RAW DATA/interest-rate.csv")
+
+#change date format
+interest_data$Date <- as.Date(interest_data$Date , "%m/%d/%Y")
+
+#plot interest rate 
+fig <- plot_ly(interest_data, x = ~Date, y = ~value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(59, 14, 37)'))
+fig <- fig %>% layout(title = "U.S Interest Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Interest Rate"))
+fig
+
+```
+
+The graph of the real interest rate in the US from 2010 to March 2023 shows a general trend of volatility and fluctuation. The real interest rate is a measure of the cost of borrowing for the US government and is adjusted for inflation.
+
+From 2010 to mid-2012, the real interest rate remained relatively low and stable, with only minor fluctuations.This increase in the real interest rate was likely due to concerns about inflation and the impact of the US government's monetary policy measures. From mid-2013 to mid-2016, the real interest rate remained relatively low, with only minor fluctuations. However, from mid-2016 to mid-2018, there was another sharp increase in the real interest rate. This increase was driven by a combination of factors, including the improving US economy, rising inflation expectations, and the Federal Reserve's decision to raise interest rates.
+
+From mid-2018 to mid-2019, the real interest rate declined sharply, and then remained relatively stable at lower levels until early 2021. This decline was largely due to concerns about a slowing global economy, trade tensions, and the impact of the COVID-19 pandemic. Since early 2021, the real interest rate has been increasing again, and it remains at a relatively high level as of March 2023. This increase may be due to concerns about inflation, the impact of government stimulus measures, and the possibility of an economic recovery.
+
+Overall, the trend of the real interest rate in the US from 2010 to March 2023 has been characterized by periods of volatility and fluctuation, driven by a range of economic and policy factors.
+
+### Inflation Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+inflation_rate <- read.csv("DATA/RAW DATA/inflation-rate.csv")
+
+
+#cleaning the data
+#remove unwanted columns
+inflation_rate_clean <- subset(inflation_rate, select = -c(1,HALF1,HALF2))
+
+#convert the data to time series data
+inflation_data_ts <- ts(as.vector(t(as.matrix(inflation_rate_clean))), start=c(2010,1), end=c(2023,2), frequency=12)
+
+#plot inflation rate 
+fig <- autoplot(inflation_data_ts, ylab = "Inflation Rate", color="#8B8695")+ggtitle("U.S Inflation Rate: January 2010 - February 2023")+theme_bw()
+ggplotly(fig)
+
+```
+
+The U.S inflation rate from January 2010 to February 2023 has been a topic of concern for many individuals and businesses. From 2010 to 2012, the inflation rate remained relatively low. However, from 2013 to 2023, the inflation rate fluctuated significantly. The COVID-19 pandemic had a significant impact on the inflation rate, causing it to rise rapidly in 2021 due to supply chain disruptions and other factors. The Federal Reserve has implemented various policies to try and manage the inflation rate, including adjusting interest rates and reducing bond purchases. The U.S inflation rate remains a closely watched indicator of economic health, and its fluctuations can have significant impacts on individuals, businesses, and the broader economy.
+
+### Unemployment Rate
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#import the data
+unemployment_rate <- read.csv("DATA/RAW DATA/unemployment-rate.csv")
+
+#change date format
+unemployment_rate$Date <- as.Date(unemployment_rate$Date , "%m/%d/%Y")
+
+#plot unemployment rate 
+#plot interest rate 
+fig <- plot_ly(unemployment_rate, x = ~Date, y = ~Value, type = 'scatter', mode = 'lines',line = list(color = 'rgb(235, 231, 115)'))
+fig <- fig %>% layout(title = "U.S Unemployment Rate: January 2010 - March 2023",xaxis = list(title = "Time"),yaxis = list(title ="Unemployment Rate"))
+fig
+
+```
+
+The U.S unemployment rate has experienced significant fluctuations between January 2010 and February 2023. Following the Great Recession of 2008, the unemployment rate peaked in October 2009, but gradually decreased to by January 2010. Throughout the years, the rate has continued to fluctuate, before increasing in April 2020 due to the COVID-19 pandemic. However, as the pandemic-related restrictions were lifted and the economy started to recover, the unemployment rate began to decline. Despite the progress made in recent years, the unemployment rate remains a significant economic indicator and a source of concern for policymakers, as persistent unemployment can have long-term effects on the economy and the well-being of individuals and families.

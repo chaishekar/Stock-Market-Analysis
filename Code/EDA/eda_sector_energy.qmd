@@ -1,0 +1,334 @@
+---
+title: "EDA for Energy Sector Fund"
+format:
+  html:
+    code-fold: true
+    self-contained: true
+    page-layout: full
+---
+
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+library(flipbookr)
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(astsa) 
+library(xts)
+library(tseries)
+library(fpp2)
+library(fma)
+library(lubridate)
+library(tidyverse)
+library(TSstudio)
+library(quantmod)
+library(tidyquant)
+library(plotly)
+library(ggplot2)
+require(gridExtra)
+options(dplyr.summarise.inform = FALSE)
+```
+
+The Energy Sector Fund (XLE) tracks the performance of companies involved in the exploration, production, and distribution of energy. From 2010 to March 2023, the fund has shown a lot of volatility due to the fluctuating prices of oil and natural gas. During this period, the fund experienced a significant decline in 2014-2015 as oil prices dropped sharply, but it rebounded in 2016-2017 as prices stabilized. However, the fund experienced another sharp decline in 2020 due to the COVID-19 pandemic and a subsequent drop in demand for energy. The trend for this sector is closely tied to geopolitical events, global economic growth, and changes in regulations. As the world transitions towards renewable energy sources, it remains to be seen how the energy sector will perform in the future.
+
+##### Time Series Plot
+
+```{r warning=FALSE}
+# get data
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+
+
+data = getSymbols("XLE",src='yahoo', from = '2010-01-01',to = "2023-03-01")
+
+df <- data.frame(Date=index(XLE),coredata(XLE))
+
+# create Bollinger Bands
+bbands <- BBands(XLE[,c("XLE.High","XLE.Low","XLE.Close")])
+
+# join and subset data
+df <- subset(cbind(df, data.frame(bbands[,1:3])), Date >= "2010-01-01")
+
+#export the data 
+XLE_data <- df
+write.csv(XLE_data, "DATA/CLEANED DATA/XLE_raw_data.csv", row.names=FALSE)
+
+# colors column for increasing and decreasing
+for (i in 1:length(df[,1])) {
+  if (df$XLE.Close[i] >= df$XLE.Open[i]) {
+      df$direction[i] = 'Increasing'
+  } else {
+      df$direction[i] = 'Decreasing'
+  }
+}
+
+i <- list(line = list(color = '#FFE4E1'))
+d <- list(line = list(color = '#7F7F7F'))
+
+# plot candlestick chart
+
+fig <- df %>% plot_ly(x = ~Date, type="candlestick",
+          open = ~XLE.Open, close = ~XLE.Close,
+          high = ~XLE.High, low = ~XLE.Low, name = "XLE",
+          increasing = i, decreasing = d) 
+fig <- fig %>% add_lines(x = ~Date, y = ~up , name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands",
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% add_lines(x = ~Date, y = ~dn, name = "B Bands",
+            line = list(color = '#ccc', width = 0.5),
+            legendgroup = "Bollinger Bands", inherit = F,
+            showlegend = FALSE, hoverinfo = "none") 
+fig <- fig %>% add_lines(x = ~Date, y = ~mavg, name = "Mv Avg",
+            line = list(color = '#E377C2', width = 0.5),
+            hoverinfo = "none", inherit = F) 
+fig <- fig %>% layout(yaxis = list(title = "Price"))
+
+# plot volume bar chart
+fig2 <- df 
+fig2 <- fig2 %>% plot_ly(x=~Date, y=~XLE.Volume, type='bar', name = "XLE Volume",
+          color = ~direction, colors = c('#FFE4E1','#7F7F7F')) 
+fig2 <- fig2 %>% layout(yaxis = list(title = "Volume"))
+
+# create rangeselector buttons
+rs <- list(visible = TRUE, x = 0.5, y = -0.055,
+           xanchor = 'center', yref = 'paper',
+           font = list(size = 9),
+           buttons = list(
+             list(count=1,
+                  label='RESET',
+                  step='all'),
+             list(count=3,
+                  label='3 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 YR',
+                  step='year',
+                  stepmode='backward'),
+             list(count=1,
+                  label='1 MO',
+                  step='month',
+                  stepmode='backward')
+           ))
+
+# subplot with shared x axis
+fig <- subplot(fig, fig2, heights = c(0.7,0.2), nrows=2,
+             shareX = TRUE, titleY = TRUE)
+fig <- fig %>% layout(title = paste("Energy Sector Fund Stock Price: JAN 2010 - March 2023"),
+         xaxis = list(rangeselector = rs),
+         legend = list(orientation = 'h', x = 0.5, y = 1,
+                       xanchor = 'center', yref = 'paper',
+                       font = list(size = 10),
+                       bgcolor = 'transparent'))
+
+fig
+
+```
+
+The Energy Sector Fund (XLE) is an exchange-traded fund that tracks the performance of the energy sector in the S&P 500 index. The fund includes companies involved in exploration, production, refining, and distribution of energy. From 2010 to March 2023, the XLE experienced significant fluctuations due to several factors.
+
+In 2010-2014, the XLE saw steady growth due to rising demand for energy, increased production from shale, and higher oil prices. However, in mid-2014, the global oil market entered a period of oversupply, and oil prices crashed. This led to a sharp decline in XLE's value, which lasted until early 2016.
+
+Between 2016 and early 2020, XLE recovered and experienced moderate growth, fueled by global economic growth and higher demand for oil. However, in early 2020, the COVID-19 pandemic caused a sharp decline in energy demand, resulting in another crash in oil prices and a significant drop in XLE's value.
+
+In the second half of 2020 and early 2021, XLE began to recover as oil prices stabilized and energy demand gradually picked up. However, concerns over inflation and rising interest rates caused a drop in XLE's value in the first quarter of 2022.
+
+Overall, the Energy Sector Fund has been highly sensitive to fluctuations in oil prices and global energy demand, which can be affected by various factors such as geopolitical events, technological advancements, and economic conditions.
+
+For stock prices, a multiplicative decomposition is typically preferred because the percentage changes in stock prices tend to be more important than the absolute changes. Additionally, stock prices tend to exhibit non-constant variance, meaning that the variance of the series changes over time. A multiplicative decomposition can handle this non-constant variance more effectively than an additive decomposition.
+
+#### Decomposed Time Series
+
+::: panel-tabset
+##### Decomposition Plot
+
+```{r warning=FALSE}
+#time series data
+myts<-ts(df$XLE.Adjusted,frequency=252,start=c(2010,01,01), end = c(2023,3,1)) 
+#original plot for time series data
+orginial_plot <- autoplot(myts,xlab ="Year", ylab = "Adjusted Closing Price", main = "Energy Sector Fund Stock price: JAN 2010 - March 2023")
+#decompose the data
+decompose = decompose(myts, "multiplicative")
+#decomposition plot
+autoplot(decompose)
+```
+
+##### Adjusted Decomposition Plot
+
+```{r warning=FALSE}
+#adjusted plot
+trendadj <- myts/decompose$trend
+decompose_adjtrend_plot <- autoplot(trendadj,ylab='trend') +ggtitle('Adjusted trend component in the multiplicative time series model')
+seasonaladj <- myts/decompose$seasonal
+decompose_adjseasonal_plot <- autoplot(seasonaladj,ylab='seasonal') +ggtitle('Adjusted seasonal component in the multiplicative time series model')
+grid.arrange(orginial_plot, decompose_adjtrend_plot,decompose_adjseasonal_plot, nrow=3)
+
+```
+:::
+
+The adjusted seasonal component tend to have upward trend till 2019 and drops during the covid period and there is more variability in the model when compared to the original plot where the variation during the years but the adjusted trend then to have more fluctuation showing no trend when compared to the original plot.
+
+#### Lag Plots
+
+::: panel-tabset
+##### Daily Time Lags
+
+```{r warning=FALSE}
+#Lag plots 
+gglagplot(myts, do.lines=FALSE, lags=1)+xlab("Lag 1")+ylab("Yi")+ggtitle("Lag Plot for Energy Sector Fund Stock JAN 2010 - March 2023")
+```
+
+##### Monthly Time Lags
+
+```{r warning=FALSE}
+#montly data
+mean_data <- df %>% 
+  mutate(month = month(Date), year = year(Date)) %>% 
+  group_by(year, month) %>% 
+  summarize(mean_value = mean(XLE.Adjusted))
+month<-ts(mean_data$mean_value,start = c(2010, 1),frequency = 12)
+#Lag plot
+ts_lags(month)
+```
+:::
+
+The first lag plot shows a scatter plot of the Energy Sector Fund stock prices against their lagged values by one time period. The plot shows a strong linear pattern, indicating a high correlation between the stock prices and their lagged values. This suggests that there is a high level of persistence in the Energy Sector Fund stock prices, meaning that the past prices are a good predictor of the future prices.
+
+The second lag plot shows a similar pattern for the mean monthly values of the Energy Sector Fund stock prices. The plot shows a strong linear pattern, indicating a positive correlation between the mean monthly values and their lagged values by one time period. This suggests that there is a high level of persistence in the mean monthly values of the Energy Sector Fund stock prices, meaning that the past monthly means are a good predictor of the future monthly means. Overall, the lag plot outputs suggest that the Energy Sector Fund stock prices have a high level of autocorrelation, which is consistent with the trend and fluctuations in the sector.
+
+#### Seasonality
+
+::: panel-tabset
+##### Seasonal Heatmap
+
+```{r warning=FALSE}
+# Create seasonal plot
+ts_heatmap(month, color = "YlOrRd", title = 'Seasonality Heatmap of Energy Sector Fund Stock Jan 2010 - March 2023')
+```
+
+##### Seasonal Line plot
+
+```{r}
+# Create a line graph for each year with months on the x-axis
+ggseasonplot(month, datecol = "date", valuecol = "value")+ggtitle("Seasonal Yearly Plot for Energy Sector Fund Stock Jan 2010 - March 2023")
+```
+:::
+
+The Seasonality Heatmap for the Energy Sector Fund Stock JAN 2010 - March 2023 does not reveal any clear seasonality in the data. The heatmap shows the mean value of the time series for each month and year combination, with the darker colors indicating higher values. The lack of clear patterns or darker colors in specific months or years suggests that there is no consistent seasonal pattern in the data. However, the yearly line graph shows a slight upward trend in the stock price from 2010 to 2023, but does not show any clear seasonality. Each year's data is represented by a line, and the months are plotted on the x-axis. Overall, the lack of clear seasonality in both the heatmap and yearly line graph suggests that other factors beyond seasonality are driving the stock price fluctuations.
+
+#### Moving Average
+
+::: panel-tabset
+##### 4 Month MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,5), series="4 Month MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Energy Sector Fund Stock JAN 2010 - March 2023(4 Month Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","4 Month MA"="red"),
+                      breaks=c("Data","4 Month MA"))
+ma
+```
+
+##### 1 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,13), series="1 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Energy Sector Fund Stock JAN 2010 - March 2023(1 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","1 Year MA"="red"),
+                      breaks=c("Data","1 Year MA"))
+ma
+```
+
+##### 3 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,37), series="3 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Energy Sector Fund Stock JAN 2010 - March 2023(3 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","3 Year MA"="red"),
+                      breaks=c("Data","3 Year MA"))
+ma
+```
+
+##### 5 Year MA
+
+```{r warning=FALSE}
+#SMA Smoothing 
+ma <- autoplot(month, series="Data") +
+  autolayer(ma(month,61), series="5 Year MA") +
+  xlab("Year") + ylab("GWh") +
+  ggtitle("Energy Sector Fund Stock JAN 2010 - March 2023(5 Year Moving Average)") +
+  scale_colour_manual(values=c("Data"="grey50","5 Year MA"="red"),
+                      breaks=c("Data","5 Year MA"))
+ma
+```
+:::
+
+The four plots show the Energy Sector Fund stock prices from JAN 2010 to March 2023, along with the moving averages for 4 months, 1 year 3 years and 4 years. As the window of the moving average increases, the smoother the trend line becomes, reducing the impact of noise and fluctuations in the original time series.
+
+The 4-month moving average plot shows frequent fluctuations in the stock price, with the trend line following the general direction of the time series. The 1-year moving average plot shows a smoother trend, following the overall upward trend of the stock price.
+
+The 1-year moving average plot shows a similar trend to the 4-month plot but is even smoother, with fewer fluctuations. Finally, the 5-year moving average plot shows the smoothest trend, with downward and upward slope.As the moving average window increases, the smoother trend allows for a clearer identification of the general trend of the Energy Sector Fund stock prices over time. From the moving average obtained above we can see that there is upward tend in the stock price of Energy Sector Fund.
+
+#### Autocorrelation Time Series
+
+::: panel-tabset
+##### ACF
+
+```{r warning=FALSE}
+#ACF for  data
+ggAcf(month)+ggtitle("ACF Plot for Energy Sector Fund Stock JAN 2010 - March 2023")
+```
+
+##### PACF
+
+```{r warning=FALSE}
+#PACF for data
+ggPacf(month)+ggtitle("PACF Plot for Energy Sector Fund Stock JAN 2010 - March 2023")
+```
+
+##### ADF Test
+
+```{r warning=FALSE}
+#check the stationarity
+tseries::adf.test(month)
+```
+:::
+
+In the plot of autocorrelation function, which is the acf graph for monthly data, there are clear autocorrelation in lag. The above lag plots and autocorrelation plot indicates seasonality in the series, which means the series is not stationary. This can be verified by the Augmented Dickey-Fuller Test which tells us that as the p value is greater than 0.05.
+
+#### Detrend and Differenced Time Series
+
+::: panel-tabset
+##### Linear Fitting Model
+
+```{r warning=FALSE}
+fit = lm(myts~time(myts), na.action=NULL) 
+summary(fit) 
+```
+
+##### ACF Plot
+
+```{r warning=FALSE}
+# plot ACFs
+plot1 <- ggAcf(myts, 48, main="Original Data: Energy Sector Fund Stock Stock Price")
+plot2 <- ggAcf(resid(fit), 48, main="Detrended data")
+plot3 <- ggAcf(diff(myts), 48, main="First differenced data")
+grid.arrange(plot1, plot2, plot3, nrow=3)
+
+```
+:::
+
+The estimated slope coefficient β1, 5.359e-01 With a standard error of 4.131e-02, yielding a significant estimated increase of stock price is very less yearly. Equation of the fit for stationary process: $$\hat{y}_{t} = x_{t}+(1.029e+03)-(5.359e-01)t$$
+
+From the above graph we can say that there is no change in detrended plot and the original data acf plot, it typically means that the data is stationary. But when the first order difference is applied the high correlation is removed but there is no seasonal correlation.
+
+As depicted in the above figure, the series is now stationary and ready for future study.
